@@ -558,7 +558,7 @@ function resultView() {
   </div>
   <div class="col center-v">
     ${slip("Discutez", "Discuss", `<p>${c.discuss}</p>`, "big", 2)}
-    <button class="next-btn" id="next"><span>Next!</span><i aria-hidden="true"></i></button>
+    <button class="next-btn" id="next"><span>${out.win || S.i + 1 >= CASES.length ? "What now?" : "Next!"}</span><i aria-hidden="true"></i></button>
   </div>`;
 }
 
