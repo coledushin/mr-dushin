@@ -733,8 +733,8 @@ function guideHTML() {
       <li>After a game over you can vote again, or continue with what really happened.</li>
       <li>Hover over a paper slip to straighten it. In the top right corner: the music-note button mutes the background music, the speaker button mutes the guillotine, and the corners button goes full screen.</li>
     </ul>
-    <p style="margin:.2em 0 .4em"><b>Student handout:</b> a black-and-white copy of the launch, focus question, learning target, instructions and every person’s evidence. Print it from here, or press ⌘P (Ctrl+P on Windows) on any screen.</p>
-    <div class="guide-close"><button class="btn" id="printHandout" style="font-size:.9em">Print student handout</button> <button class="link-btn" id="closeGuide">Close</button></div>`, "", 0);
+    <p style="margin:.2em 0 .4em"><b>Student handout:</b> a black-and-white copy of the launch, focus question, learning target, instructions and every person’s evidence. Print it from here in English or Spanish, or press ⌘P (Ctrl+P on Windows) on any screen for English.</p>
+    <div class="guide-close"><button class="btn" id="printHandout" style="font-size:.9em">Print student handout</button> <button class="btn" id="printHandoutEs" style="font-size:.9em">Print Spanish version</button> <button class="link-btn" id="closeGuide">Close</button></div>`, "", 0);
 }
 
 function render() {
@@ -930,7 +930,8 @@ document.addEventListener("click", (e) => {
   if (b.id === "start") { S = fresh(); startMusic(); return go("case"); }
   if (b.id === "openGuide") { const g = $("#guide"); g.innerHTML = guideHTML(); g.hidden = false; return; }
   if (b.id === "closeGuide") { $("#guide").hidden = true; return; }
-  if (b.id === "printHandout") { $("#guide").hidden = true; window.print(); return; }
+  if (b.id === "printHandout") { printHandout("en"); return; }
+  if (b.id === "printHandoutEs") { printHandout("es"); return; }
   if (b.dataset.vote) { const k = b.dataset.vote; S.votes[k] = Math.max(0, Math.min(60, S.votes[k] + Number(b.dataset.d))); return updateVoteUI(); }
   if (b.id === "decide") { const v = S.votes; return decide(v.ex > v.sp ? "ex" : "sp"); }
   if (b.dataset.tie) return decide(b.dataset.tie, true);
@@ -958,42 +959,121 @@ $("#guide").addEventListener("click", (e) => { if (e.target.id === "guide") e.ta
 
 
 /* Printed student handout, built from the same text as the screens. */
-function handoutHTML() {
+/* Labels for the printed handout, in English and Spanish. */
+const HANDOUT_TEXT = {
+  en: { name: "Name", date: "Date", title: "The Reign of Terror", sub: "France · 1793–1794", focus: "Focus question",
+        target: "Learning target", launch: "Launch", intro: "Introduction", instructions: "Instructions",
+        execute: "Execute", spare: "Spare", bars: "Watch the two bars on the screen:", know: "What we know",
+        reasonsEx: "Reasons to execute", reasonsSp: "Reasons to spare" },
+  es: { name: "Nombre", date: "Fecha", title: "El Reinado del Terror", sub: "Francia · 1793–1794", focus: "Pregunta central",
+        target: "Objetivo de aprendizaje", launch: "Actividad inicial", intro: "Introducción", instructions: "Instrucciones",
+        execute: "Ejecutar", spare: "Perdonar", bars: "Observa las dos barras en la pantalla:", know: "Lo que sabemos",
+        reasonsEx: "Razones para ejecutar", reasonsSp: "Razones para perdonar" },
+};
+/* Spanish handout text. People are in the same order as CASES. */
+const LESSON_ES = {
+  focus: "¿Fue necesario el Reinado del Terror para salvar la Revolución?",
+  target: "Puedo decidir si el Reinado del Terror fue necesario y apoyar mi respuesta con evidencia.",
+  launchTitle: "Francia, 1793",
+  launch: [
+    "Tu país ha vivido años de desigualdad, pobreza y disturbios políticos. El año pasado, la monarquía fue derrocada y se fundó una república. Ahora, el rey Luis XVI está siendo juzgado. Las monarquías extranjeras hablan en secreto de una guerra contra Francia para devolverle el poder, y algunos ciudadanos franceses se están rebelando contra el nuevo gobierno revolucionario.",
+    "Hoy, eres parte del <b>Comité de Salvación Pública</b>, un pequeño grupo de líderes que recibió el poder de proteger a Francia durante esta terrible crisis. Tu líder es <b>Maximilien Robespierre</b>, el miembro más poderoso del Comité.",
+    "En un discurso apasionado, Robespierre dice que se necesitan medidas duras para proteger la revolución y sus promesas de libertad e igualdad.",
+  ],
+  launchQ: "¿Debería el gobierno revolucionario tener el poder de encarcelar o ejecutar a las personas que cree que son enemigas de la revolución? Explica.",
+  intro: [
+    "El pueblo de Francia le quitó el poder a su rey. Francia ahora es una <b>república</b>.",
+    "Pero ejércitos enemigos están atacando y el pan cuesta demasiado. <b>Eres parte del Comité de Salvación Pública.</b> Tu trabajo es mantener a salvo la Revolución.",
+  ],
+  execute: "Ejecutar a la persona con la <b>guillotina</b>.",
+  spare: "Dejar vivir a la persona.",
+  today: "Tu clase decidirá qué les pasa a <b>cinco personas</b>. Lee la evidencia a favor y en contra de la ejecución, habla con un compañero y luego vota.",
+  bars: [
+    "<b>Peligro de los enemigos</b> (Danger from enemies): perdonar a los enemigos de la República lo hace subir. Al llegar a 100, Francia es invadida.",
+    "<b>Miedo al Comité</b> (Fear of the Committee): cada ejecución hace que los legisladores te tengan más miedo. Al llegar a 100, te arrestan.",
+    "Las noticias entre votaciones también mueven las barras.",
+  ],
+  people: [
+    { name: "El rey Luis XVI", date: "enero de 1793",
+      intro: "Fue el rey de Francia hasta que el pueblo le quitó el poder.",
+      facts: ["En 1791 trató de escapar de Francia disfrazado.", "Cartas secretas mostraron que trabajaba con reyes enemigos.", "Los ejércitos enemigos dicen que luchan para devolverlo al trono."],
+      execute: ["Ya intentó escapar una vez. Mientras viva, los realistas tratarán de liberarlo.", "Ayudó a los reyes que atacan a Francia. Cualquier otra persona moriría por eso."],
+      spare: ["Matar a un rey enojará aún más a otros países.", "Podría quedarse en prisión."] },
+    { name: "La reina María Antonieta", date: "octubre de 1793",
+      intro: "Fue la reina, la esposa de Luis XVI. Nació en Austria, que está en guerra con Francia.",
+      facts: ["Envió a Austria los planes de guerra de Francia.", "Sus amigos intentaron ayudarla a escapar de la prisión.", "Algunos cargos en su juicio eran mentiras."],
+      execute: ["Le dio los planes de guerra de Francia al enemigo. Soldados franceses podrían morir.", "Los realistas seguirán tratando de liberarla."],
+      spare: ["Su esposo ya está muerto.", "Su juicio no fue justo."] },
+    { name: "Los girondinos", date: "octubre de 1793",
+      intro: "Los girondinos eran un grupo de 21 legisladores. Ayudaron a crear la República y luego perdieron una lucha por el poder contra el grupo del Comité.",
+      facts: ["Llevaron a Francia a la guerra en 1792.", "Después de ser expulsados del gobierno, sus amigos dirigieron revueltas en grandes ciudades.", "Dicen que solo querían evitar que París controlara toda Francia."],
+      execute: ["Sus amigos dirigen revueltas mientras Francia está en guerra.", "Si viven, las revueltas podrían dividir a Francia."],
+      spare: ["El pueblo los eligió.", "No estar de acuerdo no es lo mismo que traición."] },
+    { name: "Georges Danton", date: "abril de 1794",
+      intro: "Danton fue un héroe de la Revolución. Ayudó a convertir a Francia en una república.",
+      facts: ["Ahora dice que las ejecuciones deben parar y que las prisiones deben abrirse.", "Sus amigos fueron descubiertos robando dinero del gobierno.", "Muchos legisladores lo aprecian y podrían seguirlo."],
+      execute: ["Sus amigos robaron dinero del gobierno y él los protegió.", "Si se abren las prisiones, verdaderos traidores podrían quedar libres."],
+      spare: ["Es un héroe de la Revolución.", "Pedir clemencia no es un crimen."] },
+    { name: "Maximilien Robespierre", date: "julio de 1794",
+      intro: "Robespierre es el hombre más poderoso de tu Comité. Dirigió el Reinado del Terror.",
+      facts: ["Miles de personas han sido ejecutadas. Cada día mueren más.", "Francia ahora está ganando la guerra. El peligro casi ha desaparecido.", "Dice que hay traidores en el gobierno, pero no dice quiénes son."],
+      execute: ["No nombra a los traidores de los que habla. Cualquiera podría ser el próximo.", "Francia está ganando la guerra. El Terror ya no es necesario."],
+      spare: ["Matarlo sin juicio es lo que él les hizo a otros.", "Sus enemigos también ordenaron matanzas. Quieren salvarse a sí mismos."] },
+  ],
+};
+
+/* Printed student handout, built from the same text as the screens (English) or from LESSON_ES (Spanish). */
+function handoutHTML(lang = "en") {
+  const T = HANDOUT_TEXT[lang], L = lang === "es" ? LESSON_ES : LESSON;
+  const people = lang === "es" ? LESSON_ES.people : CASES;
   const ul = (a) => `<ul>${a.map((x) => `<li>${x}</li>`).join("")}</ul>`;
   const lines = (n) => `<div class="h-lines">${"<div></div>".repeat(n)}</div>`;
   const page1 = `
     <section>
-      <div class="h-namerow"><span class="h-name">Name: <i></i></span><span class="h-date">Date: <i></i></span></div>
-      <header class="h-title"><h1>The Reign of Terror</h1><span class="h-sub">France · 1793–1794</span></header>
+      <div class="h-namerow"><span class="h-name">${T.name}: <i></i></span><span class="h-date">${T.date}: <i></i></span></div>
+      <header class="h-title"><h1>${T.title}</h1><span class="h-sub">${T.sub}</span></header>
       <div class="h-pair">
-        <div class="h-box h-focus"><div class="h-label">Focus question</div><p>${LESSON.focus}</p></div>
-        <div class="h-box"><div class="h-label">Learning target</div><p>${LESSON.target}</p></div>
+        <div class="h-box h-focus"><div class="h-label">${T.focus}</div><p>${L.focus}</p></div>
+        <div class="h-box"><div class="h-label">${T.target}</div><p>${L.target}</p></div>
       </div>
-      <div class="h-box"><div class="h-label">Launch · ${LESSON.launchTitle}</div>
-        ${LESSON.launch.map((t) => `<p>${t}</p>`).join("")}
-        <p class="h-launchq">${LESSON.launchQ}</p>${lines(4)}</div>
+      <div class="h-box"><div class="h-label">${T.launch} · ${L.launchTitle}</div>
+        ${L.launch.map((t) => `<p>${t}</p>`).join("")}
+        <p class="h-launchq">${L.launchQ}</p>${lines(4)}</div>
       <div class="h-pair h-split">
-        <div class="h-section"><div class="h-label">Introduction</div>
-          ${LESSON.intro.map((t) => `<p>${t}</p>`).join("")}
-          <p><b>Execute:</b> ${LESSON.execute}</p><p><b>Spare:</b> ${LESSON.spare}</p></div>
-        <div class="h-section"><div class="h-label">Instructions</div>
-          <p>${LESSON.today}</p>
-          <p><b>Watch the two bars on the screen:</b></p>${ul(LESSON.bars)}</div>
+        <div class="h-section"><div class="h-label">${T.intro}</div>
+          ${L.intro.map((t) => `<p>${t}</p>`).join("")}
+          <p><b>${T.execute}:</b> ${L.execute}</p><p><b>${T.spare}:</b> ${L.spare}</p></div>
+        <div class="h-section"><div class="h-label">${T.instructions}</div>
+          <p>${L.today}</p>
+          <p><b>${T.bars}</b></p>${ul(L.bars)}</div>
       </div>
     </section>`;
-  const people = CASES.map((c) => `
+  const cards = people.map((c) => `
       <article class="h-person">
         <div class="h-person-head"><h2>${c.name}</h2><span>${c.date}</span></div>
         <p class="h-intro">${c.intro}</p>
-        <div class="h-label">What we know</div>${ul(c.facts)}
+        <div class="h-label">${T.know}</div>${ul(c.facts)}
         <div class="h-twocol">
-          <div><div class="h-label">Reasons to execute</div>${ul(c.execute)}</div>
-          <div><div class="h-label">Reasons to spare</div>${ul(c.spare)}</div>
+          <div><div class="h-label">${T.reasonsEx}</div>${ul(c.execute)}</div>
+          <div><div class="h-label">${T.reasonsSp}</div>${ul(c.spare)}</div>
         </div>
       </article>`).join("");
-  return page1 + `<section class="h-people">${people}</section>`;
+  return page1 + `<section class="h-people">${cards}</section>`;
 }
-function boot(data) { if (data && data.S) S = data.S; else S.screen = "launch"; render(); $("#handout").innerHTML = handoutHTML(); }
+function setHandout(lang) {
+  const h = $("#handout");
+  h.innerHTML = handoutHTML(lang);
+  h.lang = lang;
+}
+/* Print a handout; the English one goes back in place afterward so Cmd/Ctrl+P stays English. */
+function printHandout(lang) {
+  $("#guide").hidden = true;
+  setHandout(lang);
+  window.print();
+  setTimeout(() => setHandout("en"), 500);
+}
+
+function boot(data) { if (data && data.S) S = data.S; else S.screen = "launch"; render(); setHandout(location.hash === "#handout-es" ? "es" : "en"); }
 window.claude?.hot?.snapshot?.(() => ({ S: JSON.parse(JSON.stringify(S)) }));
 window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
 </script>
