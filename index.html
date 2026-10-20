@@ -230,6 +230,9 @@ th { font-family: var(--font-sc); font-weight: 400; letter-spacing: .05em; color
 .slip.exit { width: min(58em, 92%); padding: min(1em, 2vh) 1.8em min(1.1em, 2.2vh); text-align: center; }
 .slip.exit .kind { font-size: 1.1em; color: var(--red); letter-spacing: .08em; }
 .slip.exit .q { font-family: var(--font-body); font-weight: 700; font-size: min(2em, 5.2vh); line-height: 1.15; margin: .2em 0 .35em; text-wrap: balance; }
+.launch-context { width: min(58em, 92%); text-align: left; }
+.launch-context p + p { margin-top: .55em; }
+.launch-q .q { font-size: min(1.55em, 4.2vh); }
 .slip.exit .how { font-size: .95em; color: var(--ink-soft); border-top: 1px dashed rgba(35,24,15,.3); padding-top: .5em; }
 .link-btn.light { color: var(--cream-dim); }
 .link-btn.light:hover { color: var(--cream); }
@@ -484,6 +487,26 @@ function chips(fx) {
 }
 
 /* ============ SCREENS ============ */
+function launchView() {
+  return `
+  <div class="end launch">
+    <header class="end-head">
+      <div class="eyebrow">Do Now</div>
+      <h1>France, 1793</h1>
+    </header>
+    <div class="slip launch-context" style="--r:.4deg">
+      <p>Your country has experienced years of inequality, poverty, and political unrest. King Louis XVI has been executed. Foreign monarchies are fighting against France, and some French citizens are rebelling against the new revolutionary government.</p>
+      <p>Today, you are the <b>Committee of Public Safety</b>, a small group of leaders given the power to protect France during this crisis. Your teacher is <b>Maximilien Robespierre</b>, the Committee’s most powerful member.</p>
+      <p>Maximilien Robespierre argues that harsh measures are necessary to protect the revolution and its promises of liberty and equality.</p>
+    </div>
+    <div class="slip exit launch-q" style="--r:-.5deg">
+      <div class="kind">Question</div>
+      <p class="q">Should the revolutionary government have the power to imprison or execute people it believes are enemies of the revolution? Explain.</p>
+    </div>
+    <button class="next-btn" id="toTitle" style="width:auto;padding-inline:2.2em"><span>Begin</span><i aria-hidden="true"></i></button>
+  </div>`;
+}
+
 function titleView() {
   return `
   <div class="col center-v">
@@ -625,7 +648,7 @@ function guideHTML() {
 
 function render() {
   renderBars();
-  const views = { title: titleView, case: caseView, result: resultView, over: overView, end: endView };
+  const views = { launch: launchView, title: titleView, case: caseView, result: resultView, over: overView, end: endView };
   $("#app").innerHTML = views[S.screen]();
 }
 function go(screen) { S.screen = screen; render(); }
@@ -837,10 +860,11 @@ document.addEventListener("click", (e) => {
     return;
   }
   if (b.id === "restart") { S = fresh(); return go("title"); }
+  if (b.id === "toTitle") { S = fresh(); return go("title"); }
 });
 $("#guide").addEventListener("click", (e) => { if (e.target.id === "guide") e.target.hidden = true; });
 
-function boot(data) { if (data && data.S) S = data.S; render(); }
+function boot(data) { if (data && data.S) S = data.S; else S.screen = "launch"; render(); }
 window.claude?.hot?.snapshot?.(() => ({ S: JSON.parse(JSON.stringify(S)) }));
 window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
 </script>
