@@ -541,7 +541,7 @@ function titleView() {
   <div class="col center-v">
     <figure class="painting leader"><img src="${EMBED.robespierre}" alt="Painting of Maximilien Robespierre"><figcaption>Your leader: <b>Maximilien Robespierre</b></figcaption></figure>
     <button class="next-btn" id="start"><span>Take your seats</span><i aria-hidden="true"></i></button>
-    <button class="ghost" id="openGuide" style="justify-self:start;align-self:flex-start">Teacher guide</button>
+    <button class="link-btn light" id="openGuide" style="align-self:center;font-size:.75em">Teacher guide</button>
   </div>`;
 }
 
@@ -650,8 +650,8 @@ function endView() {
 function guideHTML() {
   return slip("Guide du professeur", "Teacher guide · 45 minutes", `
     <ol>
-      <li><b>Opening, 5 min:</b> read the first screen aloud. Review republic, guillotine and Reign of Terror.</li>
-      <li><b>Five people, about 6 min each:</b> read the slips aloud (1 min). Partners talk using the reasons; the 2-minute timer is optional. Students raise hands while you enter the count (1 min). Stamp the verdict, read what happened, ask the discussion question (2 min).</li>
+      <li><b>Launch and intro, 10 min:</b> students answer the launch question as they arrive (about 5 min), then share a few answers. Click Begin, read the title screen aloud, and review republic, guillotine and Reign of Terror.</li>
+      <li><b>Five rounds, 5 min each:</b> read the slips aloud (1 min). Partners talk using the reasons, with the 2-minute timer (2 min). Students raise hands while you enter the count and stamp the verdict (30 sec). Read what happened and ask the discussion question (1½ min).</li>
       <li><b>Wrap-up, 10 min:</b> students answer the exit question in writing: a claim, evidence from two people, and one counterargument.</li>
     </ol>
     <ul>
