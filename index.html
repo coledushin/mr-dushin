@@ -659,7 +659,7 @@ function caseView() {
     ${slip("Vocabulaire", "Words to know", `<div class="vocab">${c.vocab.map(([w, d]) => `<span><b>${w}</b>: ${d}</span>`).join("")}</div>`, "wide", 3)}
   </div>
   <div class="col center-v">
-    <div class="timer" id="timerbox"><div class="timer-label">Talk with a partner</div><input class="clock" id="clock" value="${fmtTime(dur)}" inputmode="numeric" autocomplete="off" spellcheck="false" aria-label="Timer length. Type 3 for three minutes, or 130 for 1:30." title="Click to type a new time: 3 for three minutes, 130 for 1:30"><div class="timer-track"><i id="timerfill"></i></div><button class="timer-btn" id="timer">Start timer</button></div>
+    <div class="timer" id="timerbox"><div class="timer-label">Talk with a partner</div><input class="clock" id="clock" value="${fmtTime(dur)}" inputmode="numeric" autocomplete="off" spellcheck="false" aria-label="Timer length. Type 130 for 1:30, or 30 for 30 seconds." title="Click to type a new time: 130 for 1:30, 30 for 30 seconds"><div class="timer-track"><i id="timerfill"></i></div><button class="timer-btn" id="timer">Start timer</button></div>
     <div class="votes">
       ${[["ex", "EXECUTE"], ["sp", "SPARE"]].map(([k, label]) => `
         <div class="vpanel ${k}">
@@ -747,7 +747,7 @@ function guideHTML() {
   return slip("Guide du professeur", "Teacher guide · 45 minutes", `
     <ol>
       <li><b>Launch and intro, 10 min:</b> students answer the launch question as they arrive (about 5 min), then share a few answers. Click Begin, read the title screen aloud, and review republic, guillotine and Reign of Terror.</li>
-      <li><b>Five rounds, 5 min each:</b> read the slips aloud (1 min). Partners talk using the reasons, with the 2-minute timer (2 min). To change the timer, click the time and type a new one: 3 for three minutes, or 130 for 1:30. Students raise hands while you enter the count and stamp the verdict (30 sec). Read what happened and ask the discussion question (1½ min).</li>
+      <li><b>Five rounds, 5 min each:</b> read the slips aloud (1 min). Partners talk using the reasons, with the 2-minute timer (2 min). To change the timer, click the time and type a new one: 130 for 1:30, 300 for 3:00, or 30 for 30 seconds. Students raise hands while you enter the count and stamp the verdict (30 sec). Read what happened and ask the discussion question (1½ min).</li>
       <li><b>Wrap-up, 10 min:</b> students answer the exit question in writing: a claim, evidence from two people, and one counterargument.</li>
     </ol>
     <ul>
@@ -920,25 +920,25 @@ function nextCase() {
 
 // The teacher can click the clock and type a new length; it is remembered for later rounds.
 let dur = 120;
-try { const saved = Number(localStorage.getItem("rot-timer")); if (saved >= 10 && saved <= 3600) dur = saved; } catch (e) {}
+try { const saved = Number(localStorage.getItem("rot-timer")); if (saved >= 1 && saved <= 3600) dur = saved; } catch (e) {}
 let timerId = null, left = dur;
 function fmtTime(sec) { return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`; }
-// One or two digits are minutes (3 = 3:00). Three or four digits end in seconds (130 = 1:30).
+// Digits fill from the right, like a microwave: 3 = 0:03, 30 = 0:30, 130 = 1:30.
+function timeDigits(text) { return text.replace(/\D/g, "").replace(/^0+/, "").slice(-4); }
 function parseTime(text) {
-  const d = text.replace(/\D/g, "");
-  if (!d || d.length > 4) return null;
-  if (d.length <= 2) return Number(d) * 60;
-  return Number(d.slice(0, -2)) * 60 + Number(d.slice(-2));
+  const d = timeDigits(text);
+  if (!d) return null;
+  return Number(d.slice(0, -2) || 0) * 60 + Number(d.slice(-2));
 }
-// Shows the colon as the teacher types: 1, 13, 1:30, 10:00.
+// Shows the time as the teacher types: 0:01, 0:13, 1:30, 10:00.
 function maskTime(text) {
-  const d = text.replace(/\D/g, "").slice(0, 4);
-  return d.length >= 3 ? `${d.slice(0, -2)}:${d.slice(-2)}` : d;
+  const d = timeDigits(text).padStart(3, "0");
+  return `${d.slice(0, -2)}:${d.slice(-2)}`;
 }
 function setDuration(text) {
   const sec = parseTime(text);
   if (sec !== null) {
-    dur = Math.max(10, Math.min(3600, sec)); left = dur;
+    dur = Math.max(1, Math.min(3600, sec)); left = dur;
     try { localStorage.setItem("rot-timer", String(dur)); } catch (e) {}
   }
   const el = $("#clock"); if (el) el.value = fmtTime(dur);
