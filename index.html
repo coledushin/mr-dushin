@@ -202,7 +202,7 @@ th { font-family: var(--font-sc); font-weight: 400; letter-spacing: .05em; color
 
 /* teacher guide overlay */
 .overlay { position: fixed; inset: 0; z-index: 30; background: rgba(5,12,9,.75); display: grid; place-items: center; padding: 16px; }
-.overlay .slip { width: min(720px, 100%); max-height: 100%; overflow: auto; font-size: .85em; transform: none; }
+.overlay .slip { width: min(980px, 100%); max-height: 100%; overflow: auto; font-size: .85em; transform: none; }
 .overlay ol, .overlay ul { margin: .3em 0 .6em; padding-left: 1.2em; display: grid; gap: .25em; }
 
 
@@ -251,6 +251,10 @@ th { font-family: var(--font-sc); font-weight: 400; letter-spacing: .05em; color
 .leader img { height: min(30vh, 280px); }
 .leader figcaption { font-size: .85em; color: var(--cream); max-width: none; }
 .leader figcaption b { font-family: var(--font-sc); font-weight: 400; letter-spacing: .03em; }
+.print-row { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .4em .5em; margin-top: .5em; }
+.print-row span { font-family: var(--font-sc); font-size: .85em; color: var(--ink-soft); margin-right: .1em; }
+.print-btn { background: transparent; border: 1px solid rgba(35,24,15,.45); color: var(--ink); font-family: var(--font-sc); font-size: .8em; letter-spacing: .03em; padding: .2em .65em; border-radius: 2px; }
+.print-btn:hover { background: rgba(35,24,15,.08); border-color: var(--ink); }
 /* ---- drama: candlelit table, aged paper, gilt and leather ---- */
 body {
   background-image:
@@ -749,8 +753,9 @@ function guideHTML() {
       <li>After a game over you can vote again, or continue with what really happened.</li>
       <li>Hover over a paper slip to straighten it. In the top right corner: the music-note button mutes the background music, the speaker button mutes the guillotine, and the corners button goes full screen.</li>
     </ul>
-    <p style="margin:.2em 0 .4em"><b>Student handout:</b> a black-and-white copy of the launch, focus question, learning target, instructions and every person’s evidence. Print it from here in English or Spanish, or press ⌘P (Ctrl+P on Windows) on any screen for English. <b>Exit tickets</b> print as three versions, one per page.</p>
-    <div class="guide-close"><button class="btn" id="printHandout" style="font-size:.9em">Print student handout</button> <button class="btn" id="printHandoutEs" style="font-size:.9em">Print Spanish version</button> <button class="btn" id="printExit" style="font-size:.9em">Print exit tickets</button> <button class="link-btn" id="closeGuide">Close</button></div>`, "", 0);
+    <p style="margin:.2em 0 .4em"><b>Student handout:</b> a black-and-white copy of the launch, focus question, learning target, instructions and every person’s evidence. Print it below in English or Spanish, or press ⌘P (Ctrl+P on Windows) on any screen for English. <b>Exit tickets</b> print as three versions, one per page, also in English or Spanish.</p>
+    <div class="print-row"><span>Print:</span><button class="print-btn" id="printHandout">Student handout</button><button class="print-btn" id="printHandoutEs">Spanish handout</button><button class="print-btn" id="printExit">Exit tickets</button><button class="print-btn" id="printExitEs">Spanish exit tickets</button></div>
+    <div class="guide-close"><button class="link-btn" id="closeGuide">Close</button></div>`, "", 0);
 }
 
 function render() {
@@ -949,6 +954,7 @@ document.addEventListener("click", (e) => {
   if (b.id === "printHandout") { printHandout("en"); return; }
   if (b.id === "printHandoutEs") { printHandout("es"); return; }
   if (b.id === "printExit") { printHandout("exit"); return; }
+  if (b.id === "printExitEs") { printHandout("exit-es"); return; }
   if (b.dataset.vote) { const k = b.dataset.vote; S.votes[k] = Math.max(0, Math.min(60, S.votes[k] + Number(b.dataset.d))); return updateVoteUI(); }
   if (b.id === "decide") { const v = S.votes; return decide(v.ex > v.sp ? "ex" : "sp"); }
   if (b.dataset.tie) return decide(b.dataset.tie, true);
@@ -1079,40 +1085,70 @@ function handoutHTML(lang = "en") {
 }
 function setHandout(kind) {
   const h = $("#handout");
-  h.innerHTML = kind === "exit" ? exitTicketsHTML() : handoutHTML(kind);
-  h.lang = kind === "es" ? "es" : "en";
+  h.innerHTML = kind === "exit" ? exitTicketsHTML("en") : kind === "exit-es" ? exitTicketsHTML("es") : handoutHTML(kind);
+  h.lang = kind === "es" || kind === "exit-es" ? "es" : "en";
 }
-/* Printable exit tickets: three versions, one per page. */
-function exitTicketsHTML() {
+/* Printable exit tickets: three versions, one per page, in English or Spanish. */
+const EXIT_TEXT = {
+  en: { name: "Name", date: "Date", title: "Exit Ticket", sub: "The Reign of Terror", focus: LESSON.focus,
+        claim: "Claim", evidence: "Evidence", reasoning: "Reasoning", counter: "Counterargument", rebuttal: "Rebuttal",
+        claimOne: "Respond to the prompt in one sentence.", circleOne: "Circle one below.",
+        circle: "The Reign of Terror &nbsp;[ <b>was</b> &nbsp;/&nbsp; <b>was not</b> ]&nbsp; necessary to save the Revolution.",
+        evTwo: "Choose two people we judged today. Give a fact about their case that supports your claim.",
+        reTwo: "For each piece of evidence, explain how their case supports your claim.",
+        counterQ: "What would someone who disagrees with you say? Use a fact from the game.",
+        rebuttalQ: "Why is your claim still stronger?",
+        note: "Use at least 2 terms from the Word Bank below.",
+        evOne: "Choose one person we judged today.", fact: "Give a fact about their case that supports your claim.",
+        reOne: "Explain how their case supports your claim.", bankTitle: "Word Bank",
+        names: ["King Louis XVI", "Marie Antoinette", "The Girondins", "Danton", "Robespierre"],
+        bank: [["treason", "betraying your own country"], ["royalist", "a person who wants a king"], ["revolt", "when people fight against their own government"],
+               ["traitor", "a person who betrays their country"], ["mercy", "choosing not to punish someone"], ["danger", "the threat from enemy armies"],
+               ["fear", "how afraid lawmakers were of the Committee"]] },
+  es: { name: "Nombre", date: "Fecha", title: "Boleto de salida", sub: "El Reinado del Terror", focus: LESSON_ES.focus,
+        claim: "Afirmación", evidence: "Evidencia", reasoning: "Razonamiento", counter: "Contraargumento", rebuttal: "Refutación",
+        claimOne: "Responde a la pregunta en una oración.", circleOne: "Encierra en un círculo una opción.",
+        circle: "El Reinado del Terror &nbsp;[ <b>fue</b> &nbsp;/&nbsp; <b>no fue</b> ]&nbsp; necesario para salvar la Revolución.",
+        evTwo: "Elige a dos personas que juzgamos hoy. Da un dato sobre su caso que apoye tu afirmación.",
+        reTwo: "Para cada evidencia, explica cómo su caso apoya tu afirmación.",
+        counterQ: "¿Qué diría alguien que no está de acuerdo contigo? Usa un dato del juego.",
+        rebuttalQ: "¿Por qué tu afirmación sigue siendo más fuerte?",
+        note: "Usa al menos 2 términos del banco de palabras de abajo.",
+        evOne: "Elige a una persona que juzgamos hoy.", fact: "Da un dato sobre su caso que apoye tu afirmación.",
+        reOne: "Explica cómo su caso apoya tu afirmación.", bankTitle: "Banco de palabras",
+        names: ["El rey Luis XVI", "María Antonieta", "Los girondinos", "Danton", "Robespierre"],
+        bank: [["traición (treason)", "traicionar a tu propio país"], ["realista (royalist)", "una persona que quiere un rey"],
+               ["revuelta (revolt)", "cuando la gente lucha contra su propio gobierno"], ["traidor (traitor)", "una persona que traiciona a su país"],
+               ["clemencia (mercy)", "decidir no castigar a alguien"], ["peligro (danger)", "la amenaza de los ejércitos enemigos"],
+               ["miedo (fear)", "cuánto miedo les tenían los legisladores al Comité"]] },
+};
+function exitTicketsHTML(lang = "en") {
+  const X = EXIT_TEXT[lang];
   const lines = (n) => `<div class="h-lines">${"<div></div>".repeat(n)}</div>`;
   const head = `
-      <div class="h-namerow"><span class="h-name">Name: <i></i></span><span class="h-date">Date: <i></i></span></div>
-      <header class="h-title"><h1>Exit Ticket</h1><span class="h-sub">The Reign of Terror</span></header>
-      <div class="h-box h-focus"><p>${LESSON.focus}</p></div>`;
+      <div class="h-namerow"><span class="h-name">${X.name}: <i></i></span><span class="h-date">${X.date}: <i></i></span></div>
+      <header class="h-title"><h1>${X.title}</h1><span class="h-sub">${X.sub}</span></header>
+      <div class="h-box h-focus"><p>${X.focus}</p></div>`;
   const part = (label, prompt, body) => `<div class="t-part"><p><span class="h-label">${label}.</span> ${prompt}</p>${body}</div>`;
-  const circle = `<p class="t-circle">The Reign of Terror &nbsp;[ <b>was</b> &nbsp;/&nbsp; <b>was not</b> ]&nbsp; necessary to save the Revolution.</p>`;
-  const names = ["King Louis XVI", "Marie Antoinette", "The Girondins", "Danton", "Robespierre"];
-  const bank = [["treason", "betraying your own country"], ["royalist", "a person who wants a king"], ["revolt", "when people fight against their own government"],
-    ["traitor", "a person who betrays their country"], ["mercy", "choosing not to punish someone"], ["danger", "the threat from enemy armies"],
-    ["fear", "how afraid lawmakers were of the Committee"]];
+  const circle = `<p class="t-circle">${X.circle}</p>`;
   const v1 = head
-    + part("Claim", "Respond to the prompt in one sentence.", lines(3))
-    + part("Evidence", "Choose two people we judged today. Give a fact about their case that supports your claim.", lines(5))
-    + part("Reasoning", "For each piece of evidence, explain how their case supports your claim.", lines(5))
-    + part("Counterargument", "What would someone who disagrees with you say? Use a fact from the game.", lines(5))
-    + part("Rebuttal", "Why is your claim still stronger?", lines(5));
+    + part(X.claim, X.claimOne, lines(3))
+    + part(X.evidence, X.evTwo, lines(5))
+    + part(X.reasoning, X.reTwo, lines(5))
+    + part(X.counter, X.counterQ, lines(5))
+    + part(X.rebuttal, X.rebuttalQ, lines(5));
   const v2 = head
-    + part("Claim", "Circle one below.", circle)
-    + part("Evidence", "Choose two people we judged today. Give a fact about their case that supports your claim.", lines(5))
-    + part("Reasoning", "For each piece of evidence, explain how their case supports your claim.", lines(5));
+    + part(X.claim, X.circleOne, circle)
+    + part(X.evidence, X.evTwo, lines(5))
+    + part(X.reasoning, X.reTwo, lines(5));
   const v3 = head
-    + `<p class="t-note">Use at least 2 terms from the Word Bank below.</p>`
-    + part("Claim", "Circle one below.", circle)
-    + part("Evidence", "Choose one person we judged today.",
-        `<div class="t-people">${names.map((n) => `<div><span>${n}</span><i></i></div>`).join("")}</div>
-         <p style="margin-top:.6em">Give a fact about their case that supports your claim.</p>${lines(5)}`)
-    + part("Reasoning", "Explain how their case supports your claim.", lines(5))
-    + `<div class="t-part"><div class="h-label">Word Bank</div><ul class="t-bank">${bank.map(([w, d]) => `<li><b>${w}</b>: ${d}</li>`).join("")}</ul></div>`;
+    + `<p class="t-note">${X.note}</p>`
+    + part(X.claim, X.circleOne, circle)
+    + part(X.evidence, X.evOne,
+        `<div class="t-people">${X.names.map((n) => `<div><span>${n}</span><i></i></div>`).join("")}</div>
+         <p style="margin-top:.6em">${X.fact}</p>${lines(5)}`)
+    + part(X.reasoning, X.reOne, lines(5))
+    + `<div class="t-part"><div class="h-label">${X.bankTitle}</div><ul class="t-bank">${X.bank.map(([w, d]) => `<li><b>${w}</b>: ${d}</li>`).join("")}</ul></div>`;
   return [v1, v2, v3].map((v) => `<section class="t-ticket">${v}</section>`).join("");
 }
 /* Print a handout; the English one goes back in place afterward so Cmd/Ctrl+P stays English. */
@@ -1123,7 +1159,7 @@ function printHandout(lang) {
   setTimeout(() => setHandout("en"), 500);
 }
 
-function boot(data) { if (data && data.S) S = data.S; else S.screen = "launch"; render(); setHandout(location.hash === "#handout-es" ? "es" : location.hash === "#exit-tickets" ? "exit" : "en"); }
+function boot(data) { if (data && data.S) S = data.S; else S.screen = "launch"; render(); setHandout({ "#handout-es": "es", "#exit-tickets": "exit", "#exit-tickets-es": "exit-es" }[location.hash] || "en"); }
 window.claude?.hot?.snapshot?.(() => ({ S: JSON.parse(JSON.stringify(S)) }));
 window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
 </script>
