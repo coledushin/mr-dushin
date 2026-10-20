@@ -326,7 +326,7 @@ const BARS = {
   danger: { name: "Danger from enemies", note: "At 100, France is invaded" },
   fear:   { name: "Fear of the Committee", note: "At 100, the lawmakers arrest you" },
 };
-const START = { danger: 55, fear: 25 };
+const START = { danger: 50, fear: 25 };
 
 const CASES = [
 {
@@ -340,7 +340,7 @@ const CASES = [
   execute: ["He tried to escape once. While he lives, royalists will try to free him.", "He helped the kings attacking France. Anyone else would die for that."],
   spare: ["Killing a king will make other countries angrier.", "He could stay in prison instead."],
   vocab: [["royalist", "a person who wants a king"], ["treason", "betraying your own country"]],
-  ex: { fx: { danger: +5, fear: +5 }, say: "Kings all over Europe are furious that France killed a king. But the crowds in Paris cheer." },
+  ex: { fx: { danger: +10, fear: +5 }, say: "Kings all over Europe are furious that France killed a king. But the crowds in Paris cheer." },
   sp: { fx: { danger: +50 }, say: "Royalists gather around the living king, and enemy armies march to put him back on the throne." },
   news: { text: "Britain, Spain and the Netherlands join the war against France. Peasants in western France rebel.", fx: { danger: +15 } },
   real: "Louis XVI was executed by guillotine on January 21, 1793. Soon after, Britain, the Netherlands and Spain went to war with France.",
