@@ -323,6 +323,53 @@ h1, h2 { text-shadow: 0 2px 0 rgba(0,0,0,.5), 0 0 26px rgba(214,160,70,.2); }
   .slip { padding: .45em .8em .55em; }
   .slip .kind { margin-bottom: .15em; }
 }
+
+/* ---- printed student handout: black and white, same fonts ---- */
+#handout { display: none; }
+@media print {
+  @page { size: letter; margin: .55in .6in; }
+  :root { color-scheme: light; }
+  html, body { height: auto !important; background: #fff !important; background-image: none !important; }
+  .shell, .overlay { display: none !important; }
+  #handout { display: block; }
+}
+body.preview-handout { height: auto; background: #fff; background-image: none; color-scheme: light; }
+body.preview-handout .shell, body.preview-handout .overlay { display: none !important; }
+body.preview-handout #handout { display: block; max-width: 7.3in; margin: 0 auto; padding: .5in 0; }
+#handout { color: #000; font-family: var(--font-body); font-size: 11.5pt; line-height: 1.35; }
+#handout * { color: #000 !important; text-shadow: none !important; box-shadow: none !important; }
+#handout h1, #handout h2 { font-family: var(--font-display); font-weight: 400; margin: 0; line-height: 1.05; }
+#handout h1 { font-size: 30pt; }
+#handout h2 { font-size: 17pt; }
+#handout p { margin: 0; max-width: none; }
+#handout p + p { margin-top: .45em; }
+#handout ul { margin: .2em 0 0; padding-left: 1.15em; }
+#handout li + li { margin-top: .15em; }
+#handout b { font-weight: 700; }
+.h-label { font-family: var(--font-sc); font-size: 12pt; letter-spacing: .04em; margin-bottom: .15em; }
+.h-namerow { display: flex; gap: 2.5em; font-size: 12pt; margin-bottom: 1em; }
+.h-namerow span { display: flex; align-items: flex-end; gap: .4em; }
+.h-namerow span i { display: inline-block; border-bottom: 1px solid #000; height: 1em; }
+.h-title { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #000; padding-bottom: .35em; margin-bottom: .8em; }
+.h-title .h-sub { font-family: var(--font-sc); font-size: 11pt; letter-spacing: .04em; }
+.h-box { border: 1.5px solid #000; padding: .55em .8em .65em; margin-bottom: .7em; break-inside: avoid; }
+.h-box.h-focus p { font-size: 14pt; font-weight: 700; }
+.h-twocol { display: grid; grid-template-columns: 1fr 1fr; gap: .8em 1.4em; }
+#handout .h-twocol > p + p { margin-top: 0; }
+.h-pair { display: grid; grid-template-columns: 1fr 1fr; gap: .9em; margin-bottom: .7em; }
+.h-pair > .h-box, .h-pair > .h-section { margin-bottom: 0; }
+.h-pair.h-split { gap: 1.6em; }
+.h-launchq { font-weight: 700; margin-top: .6em !important; }
+.h-lines { margin-top: .3em; }
+.h-lines div { border-bottom: 1px solid #000; height: 1.9em; }
+.h-section { margin-bottom: .75em; break-inside: avoid; }
+.h-people { break-before: page; }
+.h-person { border-top: 2px solid #000; padding-top: .45em; margin-bottom: 1em; break-inside: avoid; }
+.h-person-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1em; }
+.h-person-head span { font-family: var(--font-sc); font-size: 11pt; letter-spacing: .04em; }
+.h-person .h-intro { font-style: normal; margin: .2em 0 .45em; }
+.h-person .h-twocol { margin-top: .45em; }
+.h-person .h-twocol > div { border: 1px solid #000; padding: .4em .6em .5em; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 
@@ -331,6 +378,7 @@ h1, h2 { text-shadow: 0 2px 0 rgba(0,0,0,.5), 0 0 26px rgba(214,160,70,.2); }
   <main class="stage" id="app"></main>
 </div>
 <div class="overlay" id="guide" hidden></div>
+<div id="handout" aria-hidden="true"></div>
 
 <script>
 /* Background music, embedded so this file works on its own. */
@@ -505,20 +553,43 @@ function chips(fx) {
 }
 
 /* ============ SCREENS ============ */
+/* Lesson text shared by the screens and the printed student handout. */
+const LESSON = {
+  focus: "Was the Reign of Terror necessary to save the Revolution?",
+  target: "I can decide whether the Reign of Terror was necessary and back up my answer with evidence.",
+  launchTitle: "France, 1793",
+  launch: [
+    "Your country has experienced years of inequality, poverty, and political unrest. Last year, the monarchy was thrown out and a republic was founded. Now, King Louis XVI is on trial. Foreign monarchies whisper of war against France to restore him to power, and some French citizens are rebelling against the new revolutionary government.",
+    "Today, you are the <b>Committee of Public Safety</b>, a small group of leaders handed the power to protect France during this terrible crisis. You are led by <b>Maximilien Robespierre</b>, the Committee’s most powerful member.",
+    "In a fiery speech, Robespierre argues that harsh measures are necessary to protect the revolution and its promises of liberty and equality.",
+  ],
+  launchQ: "Should the revolutionary government have the power to imprison or execute people it believes are enemies of the revolution? Explain.",
+  intro: [
+    "The people of France have taken power from their king. France is now a <b>republic</b>.",
+    "But enemy armies are attacking, and bread costs too much. <b>You are the Committee of Public Safety.</b> Your job is to keep the Revolution safe.",
+  ],
+  execute: "Put the person to death with the <b>guillotine</b>.",
+  spare: "Let the person live.",
+  today: "Your class will decide what happens to <b>five people</b>. Read the evidence for and against execution, talk with a partner, then vote.",
+  bars: [
+    "<b>Danger from enemies:</b> sparing enemies of the Republic raises it. At 100, France is invaded.",
+    "<b>Fear of the Committee:</b> every execution makes lawmakers more afraid of you. At 100, they arrest you.",
+    "News between votes moves the bars too.",
+  ],
+};
+
 function launchView() {
   return `
   <div class="end launch">
     <header class="end-head">
-      <h1>France, 1793</h1>
+      <h1>${LESSON.launchTitle}</h1>
     </header>
     <div class="slip launch-context" style="--r:.4deg">
-      <p>Your country has experienced years of inequality, poverty, and political unrest. Last year, the monarchy was thrown out and a republic was founded. Now, King Louis XVI is on trial. Foreign monarchies whisper of war against France to restore him to power, and some French citizens are rebelling against the new revolutionary government.</p>
-      <p>Today, you are the <b>Committee of Public Safety</b>, a small group of leaders handed the power to protect France during this terrible crisis. You are led by <b>Maximilien Robespierre</b>, the Committee’s most powerful member.</p>
-      <p>In a fiery speech, Robespierre argues that harsh measures are necessary to protect the revolution and its promises of liberty and equality.</p>
+      ${LESSON.launch.map((t) => `<p>${t}</p>`).join("")}
     </div>
     <div class="slip exit launch-q" style="--r:-.5deg">
       <div class="kind">Launch</div>
-      <p class="q">Should the revolutionary government have the power to imprison or execute people it believes are enemies of the revolution? Explain.</p>
+      <p class="q">${LESSON.launchQ}</p>
     </div>
     <button class="next-btn" id="toTitle" style="width:auto;padding-inline:2.2em"><span>Begin</span><i aria-hidden="true"></i></button>
   </div>`;
@@ -529,14 +600,13 @@ function titleView() {
   <div class="col center-v">
     <div class="eyebrow">France · 1793</div>
     <h1>The Reign of Terror</h1>
-    <p class="lede">The people of France have taken power from their king. France is now a <b>republic</b>.</p>
-    <p class="lede">But enemy armies are attacking, and bread costs too much. <b>You are the Committee of Public Safety.</b> Your job is to keep the Revolution safe.</p>
+    ${LESSON.intro.map((t) => `<p class="lede">${t}</p>`).join("")}
   </div>
   <div class="slips">
-    ${slip("Exécuter", "Execute", `<p>Put the person to death with the <b>guillotine</b>.</p>`, "ex", 0)}
-    ${slip("Épargner", "Spare", `<p>Let the person live.</p>`, "sp", 1)}
-    ${slip("Ordre du jour", "Today", `<p>Your class will decide what happens to <b>five people</b>. Read the evidence for and against execution, talk with a partner, then vote.</p><p class="starter">Today’s question: <b>Was the Reign of Terror necessary to save the Revolution?</b> Collect evidence as you go.</p>`, "wide", 2)}
-    ${slip("Les deux mesures", "Watch the bars at the top", list(["<b>Danger from enemies:</b> sparing enemies of the Republic raises it. At 100, France is invaded.", "<b>Fear of the Committee:</b> every execution makes lawmakers more afraid of you. At 100, they arrest you.", "News between votes moves the bars too."]), "wide", 3)}
+    ${slip("Exécuter", "Execute", `<p>${LESSON.execute}</p>`, "ex", 0)}
+    ${slip("Épargner", "Spare", `<p>${LESSON.spare}</p>`, "sp", 1)}
+    ${slip("Ordre du jour", "Today", `<p>${LESSON.today}</p><p class="starter">Today’s question: <b>${LESSON.focus}</b> Collect evidence as you go.</p>`, "wide", 2)}
+    ${slip("Les deux mesures", "Watch the bars at the top", list(LESSON.bars), "wide", 3)}
   </div>
   <div class="col center-v">
     <figure class="painting leader"><img src="${EMBED.robespierre}" alt="Painting of Maximilien Robespierre"><figcaption>Your leader: <b>Maximilien Robespierre</b></figcaption></figure>
@@ -661,7 +731,8 @@ function guideHTML() {
       <li>After a game over you can vote again, or continue with what really happened.</li>
       <li>Hover over a paper slip to straighten it. In the top right corner: the music-note button mutes the background music, the speaker button mutes the guillotine, and the corners button goes full screen.</li>
     </ul>
-    <div class="guide-close"><button class="link-btn" id="closeGuide">Close</button></div>`, "", 0);
+    <p style="margin:.2em 0 .4em"><b>Student handout:</b> a black-and-white copy of the launch, focus question, learning target, instructions and every person’s evidence. Print it from here, or press ⌘P (Ctrl+P on Windows) on any screen.</p>
+    <div class="guide-close"><button class="btn" id="printHandout" style="font-size:.9em">Print student handout</button> <button class="link-btn" id="closeGuide">Close</button></div>`, "", 0);
 }
 
 function render() {
@@ -857,6 +928,7 @@ document.addEventListener("click", (e) => {
   if (b.id === "start") { S = fresh(); startMusic(); return go("case"); }
   if (b.id === "openGuide") { const g = $("#guide"); g.innerHTML = guideHTML(); g.hidden = false; return; }
   if (b.id === "closeGuide") { $("#guide").hidden = true; return; }
+  if (b.id === "printHandout") { $("#guide").hidden = true; window.print(); return; }
   if (b.dataset.vote) { const k = b.dataset.vote; S.votes[k] = Math.max(0, Math.min(60, S.votes[k] + Number(b.dataset.d))); return updateVoteUI(); }
   if (b.id === "decide") { const v = S.votes; return decide(v.ex > v.sp ? "ex" : "sp"); }
   if (b.dataset.tie) return decide(b.dataset.tie, true);
@@ -882,7 +954,44 @@ document.addEventListener("click", (e) => {
 });
 $("#guide").addEventListener("click", (e) => { if (e.target.id === "guide") e.target.hidden = true; });
 
-function boot(data) { if (data && data.S) S = data.S; else S.screen = "launch"; render(); }
+
+/* Printed student handout, built from the same text as the screens. */
+function handoutHTML() {
+  const ul = (a) => `<ul>${a.map((x) => `<li>${x}</li>`).join("")}</ul>`;
+  const lines = (n) => `<div class="h-lines">${"<div></div>".repeat(n)}</div>`;
+  const page1 = `
+    <section>
+      <div class="h-namerow"><span>Name: <i style="width:3.6in"></i></span><span>Date: <i style="width:1.5in"></i></span></div>
+      <header class="h-title"><h1>The Reign of Terror</h1><span class="h-sub">France · 1793–1794</span></header>
+      <div class="h-pair">
+        <div class="h-box h-focus"><div class="h-label">Focus question</div><p>${LESSON.focus}</p></div>
+        <div class="h-box"><div class="h-label">Learning target</div><p>${LESSON.target}</p></div>
+      </div>
+      <div class="h-box"><div class="h-label">Launch · ${LESSON.launchTitle}</div>
+        ${LESSON.launch.map((t) => `<p>${t}</p>`).join("")}
+        <p class="h-launchq">${LESSON.launchQ}</p>${lines(4)}</div>
+      <div class="h-pair h-split">
+        <div class="h-section"><div class="h-label">Introduction</div>
+          ${LESSON.intro.map((t) => `<p>${t}</p>`).join("")}
+          <p><b>Execute:</b> ${LESSON.execute}</p><p><b>Spare:</b> ${LESSON.spare}</p></div>
+        <div class="h-section"><div class="h-label">Instructions</div>
+          <p>${LESSON.today}</p>
+          <p><b>Watch the two bars on the screen:</b></p>${ul(LESSON.bars)}</div>
+      </div>
+    </section>`;
+  const people = CASES.map((c) => `
+      <article class="h-person">
+        <div class="h-person-head"><h2>${c.name}</h2><span>${c.date}</span></div>
+        <p class="h-intro">${c.intro}</p>
+        <div class="h-label">What we know</div>${ul(c.facts)}
+        <div class="h-twocol">
+          <div><div class="h-label">Reasons to execute</div>${ul(c.execute)}</div>
+          <div><div class="h-label">Reasons to spare</div>${ul(c.spare)}</div>
+        </div>
+      </article>`).join("");
+  return page1 + `<section class="h-people">${people}</section>`;
+}
+function boot(data) { if (data && data.S) S = data.S; else S.screen = "launch"; render(); $("#handout").innerHTML = handoutHTML(); }
 window.claude?.hot?.snapshot?.(() => ({ S: JSON.parse(JSON.stringify(S)) }));
 window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
 </script>
