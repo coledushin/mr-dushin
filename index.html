@@ -349,7 +349,9 @@ body.preview-handout #handout { display: block; max-width: 7.3in; margin: 0 auto
 .h-label { font-family: var(--font-sc); font-size: 12pt; letter-spacing: .04em; margin-bottom: .15em; }
 .h-namerow { display: flex; gap: 2.5em; font-size: 12pt; margin-bottom: 1em; }
 .h-namerow span { display: flex; align-items: flex-end; gap: .4em; }
-.h-namerow span i { display: inline-block; border-bottom: 1px solid #000; height: 1em; }
+.h-namerow span i { flex: 1; border-bottom: 1px solid #000; height: 1em; }
+.h-namerow .h-name { flex: 2.3; }
+.h-namerow .h-date { flex: 1; }
 .h-title { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #000; padding-bottom: .35em; margin-bottom: .8em; }
 .h-title .h-sub { font-family: var(--font-sc); font-size: 11pt; letter-spacing: .04em; }
 .h-box { border: 1.5px solid #000; padding: .55em .8em .65em; margin-bottom: .7em; break-inside: avoid; }
@@ -961,7 +963,7 @@ function handoutHTML() {
   const lines = (n) => `<div class="h-lines">${"<div></div>".repeat(n)}</div>`;
   const page1 = `
     <section>
-      <div class="h-namerow"><span>Name: <i style="width:3.6in"></i></span><span>Date: <i style="width:1.5in"></i></span></div>
+      <div class="h-namerow"><span class="h-name">Name: <i></i></span><span class="h-date">Date: <i></i></span></div>
       <header class="h-title"><h1>The Reign of Terror</h1><span class="h-sub">France · 1793–1794</span></header>
       <div class="h-pair">
         <div class="h-box h-focus"><div class="h-label">Focus question</div><p>${LESSON.focus}</p></div>
