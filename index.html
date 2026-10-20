@@ -114,7 +114,7 @@ p { margin: 0; }
 
 /* portrait */
 .painting { margin: 0; display: grid; gap: .8em; justify-items: center; }
-.painting img { height: min(34vh, 320px); aspect-ratio: 4 / 5; width: auto; max-width: 100%; object-fit: cover; object-position: 50% 15%; border-radius: 50%; border: 4px solid var(--brass); box-shadow: 0 0 0 6px rgba(0,0,0,.35), 0 10px 24px rgba(0,0,0,.5); background: var(--paper-shade); }
+.painting img { --fw: clamp(8px, 1.4vh, 14px); height: min(34vh, 320px); aspect-ratio: 4 / 5; width: auto; max-width: 100%; object-fit: cover; object-position: 50% 15%; }
 .painting figcaption { font-size: .62em; color: var(--cream-dim); text-align: center; max-width: 26em; }
 .who-text { display: grid; gap: .35em; text-align: center; container-type: inline-size; }
 
@@ -224,12 +224,13 @@ th { font-family: var(--font-sc); font-weight: 400; letter-spacing: .05em; color
 .end-head .lede { max-width: 52em; color: var(--cream-dim); font-size: .9em; text-wrap: balance; }
 .judged { list-style: none; margin: .2em 0; padding: 0; display: flex; gap: 1.6em; justify-content: center; flex-wrap: wrap; }
 .judged li { display: grid; justify-items: center; align-content: start; gap: .4em; width: 8.5em; }
-.judged img { height: min(17vh, 160px); aspect-ratio: 4 / 5; width: auto; object-fit: cover; object-position: 50% 15%; border-radius: 50%; border: 3px solid #b8913c; box-shadow: 0 0 0 1px #2e2109, 0 8px 18px rgba(0,0,0,.55); background: var(--paper-shade); }
+.judged img { --fw: 6px; height: min(17vh, 160px); aspect-ratio: 4 / 5; width: auto; object-fit: cover; object-position: 50% 15%; }
 .judged .jn { font-family: var(--font-sc); font-size: 1em; line-height: 1.15; color: var(--cream); }
 .judged .jd { font-size: .7em; color: var(--cream-dim); }
 .slip.exit { width: min(58em, 92%); padding: min(1em, 2vh) 1.8em min(1.1em, 2.2vh); text-align: center; }
 .slip.exit .kind { font-size: 1.1em; color: var(--red); letter-spacing: .08em; }
 .slip.exit .q { font-family: var(--font-body); font-weight: 700; font-size: min(2em, 5.2vh); line-height: 1.15; margin: .2em 0 .35em; text-wrap: balance; }
+.end.launch { gap: min(.9em, 1.8vh); }
 .launch-context { width: min(58em, 92%); text-align: left; }
 .launch-context p + p { margin-top: .55em; }
 .launch-q .q { font-size: min(1.55em, 4.2vh); }
@@ -247,6 +248,9 @@ th { font-family: var(--font-sc); font-weight: 400; letter-spacing: .05em; color
 .next-btn:hover { background: linear-gradient(#4a3322, #24180f); }
 .next-btn:hover i { transform: translateX(.2em) rotate(45deg); }
 .next-btn:active { transform: translateY(3px); box-shadow: inset 0 1px 0 rgba(255,220,160,.14), 0 2px 0 #0d0805, 0 8px 16px rgba(0,0,0,.5); }
+.leader img { height: min(30vh, 280px); }
+.leader figcaption { font-size: .85em; color: var(--cream); max-width: none; }
+.leader figcaption b { font-family: var(--font-sc); font-weight: 400; letter-spacing: .03em; }
 /* ---- drama: candlelit table, aged paper, gilt and leather ---- */
 body {
   background-image:
@@ -267,9 +271,23 @@ h1, h2 { text-shadow: 0 2px 0 rgba(0,0,0,.5), 0 0 26px rgba(214,160,70,.2); }
   transition: transform .25s, box-shadow .25s;
 }
 .slip:hover { transform: rotate(0deg) translateY(-4px); box-shadow: 0 1px 0 rgba(0,0,0,.25), 0 24px 40px rgba(0,0,0,.6), inset 0 0 26px rgba(120,80,30,.16); }
-.painting img {
-  border: 5px solid #b8913c;
-  box-shadow: 0 0 0 2px #2e2109, 0 0 0 7px rgba(200,161,72,.3), 0 16px 34px rgba(0,0,0,.65), 0 0 60px rgba(214,160,70,.15);
+/* antique gilt frame: dark wood edge, carved gold molding, dark sight line around the canvas */
+.painting img, .judged img {
+  border-radius: 1px;
+  padding: var(--fw);
+  border: 2px solid #1e1407;
+  background:
+    repeating-linear-gradient(45deg, rgba(90,60,15,.18) 0 2px, transparent 2px 5px),
+    linear-gradient(135deg, #fbe7a6 0%, #c99a3c 18%, #7a5419 38%, #e3bb5e 55%, #8a6020 76%, #f3d68b 100%);
+  outline: 2px solid #24180a;
+  outline-offset: calc(-1 * var(--fw) - 2px);
+  box-shadow:
+    inset 2px 2px 0 rgba(255,240,195,.55),
+    inset -2px -2px 0 rgba(60,35,5,.55),
+    inset 0 0 0 calc(var(--fw) * .45) rgba(120,80,20,.18),
+    0 0 0 3px #3b2a12,
+    0 16px 34px rgba(0,0,0,.65),
+    0 0 50px rgba(214,160,70,.12);
 }
 .vpanel {
   background: linear-gradient(#3f2b1b, #1d130c);
@@ -521,7 +539,8 @@ function titleView() {
     ${slip("Les deux mesures", "Watch the bars at the top", list(["<b>Danger from enemies:</b> sparing enemies of the Republic raises it. At 100, France is invaded.", "<b>Fear of the Committee:</b> every execution makes lawmakers more afraid of you. At 100, they arrest you.", "News between votes moves the bars too."]), "wide", 3)}
   </div>
   <div class="col center-v">
-    <button class="btn" id="start">Take your seats</button>
+    <figure class="painting leader"><img src="${EMBED.robespierre}" alt="Painting of Maximilien Robespierre"><figcaption>Your leader: <b>Maximilien Robespierre</b></figcaption></figure>
+    <button class="next-btn" id="start"><span>Take your seats</span><i aria-hidden="true"></i></button>
     <button class="ghost" id="openGuide" style="justify-self:start;align-self:flex-start">Teacher guide</button>
   </div>`;
 }
