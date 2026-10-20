@@ -146,6 +146,10 @@ p { margin: 0; }
 /* vote stamps */
 .timer { display: grid; justify-items: center; row-gap: .3em; padding: .2em 0; color: var(--cream); text-align: center; }
 .timer .clock { font-family: var(--font-body); font-weight: 700; font-size: 2.5em; line-height: 1; color: var(--cream); text-shadow: 0 2px 0 rgba(0,0,0,.5), 0 0 18px rgba(214,160,70,.25); font-variant-numeric: tabular-nums; min-width: 2.5em; }
+input.clock { width: 3.5em; padding: 0; margin: 0; background: none; border: 0; border-bottom: 2px dashed rgba(200,161,72,.45); border-radius: 0; text-align: center; cursor: text; }
+input.clock:hover, input.clock:focus { border-bottom-color: var(--brass); outline: none; }
+input.clock:focus { background: rgba(0,0,0,.25); }
+input.clock[readonly] { border-bottom-color: transparent; cursor: default; background: none; }
 .timer-label { font-family: var(--font-sc); font-size: 1.1em; letter-spacing: .03em; line-height: 1.1; color: var(--brass); white-space: nowrap; }
 .timer-btn { justify-self: center; border: 0; background: none; padding: 0; color: var(--cream-dim); font-family: var(--font-body); font-size: .8em; text-decoration: underline; text-underline-offset: 3px; }
 .timer-btn:hover { color: var(--cream); }
@@ -655,7 +659,7 @@ function caseView() {
     ${slip("Vocabulaire", "Words to know", `<div class="vocab">${c.vocab.map(([w, d]) => `<span><b>${w}</b>: ${d}</span>`).join("")}</div>`, "wide", 3)}
   </div>
   <div class="col center-v">
-    <div class="timer" id="timerbox"><div class="timer-label">Talk with a partner</div><div class="clock" id="clock">2:00</div><div class="timer-track"><i id="timerfill"></i></div><button class="timer-btn" id="timer">Start timer</button></div>
+    <div class="timer" id="timerbox"><div class="timer-label">Talk with a partner</div><input class="clock" id="clock" value="${fmtTime(dur)}" inputmode="numeric" autocomplete="off" spellcheck="false" aria-label="Timer length. Type minutes, like 3 or 1:30." title="Click to type a new time, like 3 or 1:30"><div class="timer-track"><i id="timerfill"></i></div><button class="timer-btn" id="timer">Start timer</button></div>
     <div class="votes">
       ${[["ex", "EXECUTE"], ["sp", "SPARE"]].map(([k, label]) => `
         <div class="vpanel ${k}">
@@ -743,7 +747,7 @@ function guideHTML() {
   return slip("Guide du professeur", "Teacher guide · 45 minutes", `
     <ol>
       <li><b>Launch and intro, 10 min:</b> students answer the launch question as they arrive (about 5 min), then share a few answers. Click Begin, read the title screen aloud, and review republic, guillotine and Reign of Terror.</li>
-      <li><b>Five rounds, 5 min each:</b> read the slips aloud (1 min). Partners talk using the reasons, with the 2-minute timer (2 min). Students raise hands while you enter the count and stamp the verdict (30 sec). Read what happened and ask the discussion question (1½ min).</li>
+      <li><b>Five rounds, 5 min each:</b> read the slips aloud (1 min). Partners talk using the reasons, with the 2-minute timer (2 min). To change the timer, click the time and type a new one, like 3 or 1:30. Students raise hands while you enter the count and stamp the verdict (30 sec). Read what happened and ask the discussion question (1½ min).</li>
       <li><b>Wrap-up, 10 min:</b> students answer the exit question in writing: a claim, evidence from two people, and one counterargument.</li>
     </ol>
     <ul>
@@ -914,12 +918,31 @@ function nextCase() {
   S.i++; S.votes = { ex: 0, sp: 0 }; go("case");
 }
 
-let timerId = null, left = 120;
-function stopTimer() { clearInterval(timerId); timerId = null; left = 120; }
+// The teacher can click the clock and type a new length; it is remembered for later rounds.
+let dur = 120;
+try { const saved = Number(localStorage.getItem("rot-timer")); if (saved >= 10 && saved <= 3600) dur = saved; } catch (e) {}
+let timerId = null, left = dur;
+function fmtTime(sec) { return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`; }
+function parseTime(text) {
+  const t = text.trim().replace(/[.;]/, ":");
+  let m = t.match(/^(\d{1,2}):(\d{1,2})$/);
+  if (m && Number(m[2]) < 60) return Number(m[1]) * 60 + Number(m[2]);
+  m = t.match(/^\d{1,2}$/);
+  return m ? Number(t) * 60 : null;
+}
+function setDuration(text) {
+  const sec = parseTime(text);
+  if (sec !== null) {
+    dur = Math.max(10, Math.min(3600, sec)); left = dur;
+    try { localStorage.setItem("rot-timer", String(dur)); } catch (e) {}
+  }
+  const el = $("#clock"); if (el) el.value = fmtTime(dur);
+}
+function stopTimer() { clearInterval(timerId); timerId = null; left = dur; }
 function tick() {
   left--; const el = $("#clock"), box = $("#timerbox"), fill = $("#timerfill");
-  if (el) el.textContent = left > 0 ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}` : "Time!";
-  if (fill) fill.style.width = Math.max(0, left / 120 * 100) + "%";
+  if (el) el.value = left > 0 ? fmtTime(left) : "Time!";
+  if (fill) fill.style.width = Math.max(0, left / dur * 100) + "%";
   if (box) { box.classList.toggle("low", left > 0 && left <= 15); box.classList.toggle("done", left <= 0); }
   if (left <= 0) { clearInterval(timerId); timerId = null; }
 }
@@ -960,10 +983,11 @@ document.addEventListener("click", (e) => {
   if (b.dataset.tie) return decide(b.dataset.tie, true);
   if (b.id === "timer") {
     const box = $("#timerbox"), fill = $("#timerfill");
-    if (timerId || left < 120) {
-      stopTimer(); $("#clock").textContent = "2:00"; b.textContent = "Start timer";
+    const clock = $("#clock");
+    if (timerId || left < dur) {
+      stopTimer(); clock.value = fmtTime(dur); clock.readOnly = false; b.textContent = "Start timer";
       box.classList.remove("low", "done"); fill.style.width = "100%";
-    } else { left = 120; timerId = setInterval(tick, 1000); b.textContent = "Reset"; }
+    } else { setDuration(clock.value); left = dur; clock.readOnly = true; clock.blur(); timerId = setInterval(tick, 1000); b.textContent = "Reset"; }
     return;
   }
   if (b.id === "next") return nextCase();
@@ -977,6 +1001,13 @@ document.addEventListener("click", (e) => {
   }
   if (b.id === "restart") { S = fresh(); return go("title"); }
   if (b.id === "toTitle") { S = fresh(); return go("title"); }
+});
+document.addEventListener("change", (e) => { if (e.target.id === "clock" && !e.target.readOnly) setDuration(e.target.value); });
+document.addEventListener("focusin", (e) => { if (e.target.id === "clock" && !e.target.readOnly) e.target.select(); });
+document.addEventListener("keydown", (e) => {
+  if (e.target.id !== "clock" || e.target.readOnly) return;
+  if (e.key === "Enter") { e.preventDefault(); e.target.blur(); }
+  if (e.key === "Escape") { e.target.value = fmtTime(dur); e.target.blur(); }
 });
 $("#guide").addEventListener("click", (e) => { if (e.target.id === "guide") e.target.hidden = true; });
 
