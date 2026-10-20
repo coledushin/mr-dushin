@@ -372,6 +372,22 @@ body.preview-handout #handout { display: block; max-width: 7.3in; margin: 0 auto
 .h-person .h-intro { font-style: normal; margin: .2em 0 .45em; }
 .h-person .h-twocol { margin-top: .45em; }
 .h-person .h-twocol > div { border: 1px solid #000; padding: .4em .6em .5em; }
+.t-ticket + .t-ticket { break-before: page; }
+.t-ticket .h-lines div { height: 1.72em; }
+.t-ticket .h-namerow { margin-bottom: .7em; }
+.t-ticket .h-title { margin-bottom: .65em; }
+.t-ticket .h-title h1 { font-size: 26pt; }
+.t-ticket .h-box.h-focus { text-align: center; margin-bottom: .8em; }
+.t-part { margin-bottom: .75em; break-inside: avoid; }
+.t-part > p .h-label { display: inline; margin: 0; }
+.t-note { text-align: center; margin: -.2em 0 .6em !important; }
+.t-circle { font-size: 12.5pt; border-bottom: 1px solid #000; padding: .45em 0 .35em; margin-top: .2em !important; }
+.t-people { display: grid; grid-template-columns: repeat(5, 1fr); border: 1.5px solid #000; margin-top: .4em; }
+.t-people > div { display: grid; justify-items: center; gap: .45em; padding: .5em .3em .6em; text-align: center; }
+.t-people > div + div { border-left: 1px solid #000; }
+.t-people i { width: .95em; height: .95em; border: 1.5px solid #000; }
+.t-bank { list-style: none; padding-left: .2em !important; }
+.t-bank li::before { content: ""; display: inline-block; width: .7em; height: .7em; border: 1.3px solid #000; border-radius: 50%; margin-right: .55em; vertical-align: -.05em; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 
@@ -733,8 +749,8 @@ function guideHTML() {
       <li>After a game over you can vote again, or continue with what really happened.</li>
       <li>Hover over a paper slip to straighten it. In the top right corner: the music-note button mutes the background music, the speaker button mutes the guillotine, and the corners button goes full screen.</li>
     </ul>
-    <p style="margin:.2em 0 .4em"><b>Student handout:</b> a black-and-white copy of the launch, focus question, learning target, instructions and every person’s evidence. Print it from here in English or Spanish, or press ⌘P (Ctrl+P on Windows) on any screen for English.</p>
-    <div class="guide-close"><button class="btn" id="printHandout" style="font-size:.9em">Print student handout</button> <button class="btn" id="printHandoutEs" style="font-size:.9em">Print Spanish version</button> <button class="link-btn" id="closeGuide">Close</button></div>`, "", 0);
+    <p style="margin:.2em 0 .4em"><b>Student handout:</b> a black-and-white copy of the launch, focus question, learning target, instructions and every person’s evidence. Print it from here in English or Spanish, or press ⌘P (Ctrl+P on Windows) on any screen for English. <b>Exit tickets</b> print as three versions, one per page.</p>
+    <div class="guide-close"><button class="btn" id="printHandout" style="font-size:.9em">Print student handout</button> <button class="btn" id="printHandoutEs" style="font-size:.9em">Print Spanish version</button> <button class="btn" id="printExit" style="font-size:.9em">Print exit tickets</button> <button class="link-btn" id="closeGuide">Close</button></div>`, "", 0);
 }
 
 function render() {
@@ -932,6 +948,7 @@ document.addEventListener("click", (e) => {
   if (b.id === "closeGuide") { $("#guide").hidden = true; return; }
   if (b.id === "printHandout") { printHandout("en"); return; }
   if (b.id === "printHandoutEs") { printHandout("es"); return; }
+  if (b.id === "printExit") { printHandout("exit"); return; }
   if (b.dataset.vote) { const k = b.dataset.vote; S.votes[k] = Math.max(0, Math.min(60, S.votes[k] + Number(b.dataset.d))); return updateVoteUI(); }
   if (b.id === "decide") { const v = S.votes; return decide(v.ex > v.sp ? "ex" : "sp"); }
   if (b.dataset.tie) return decide(b.dataset.tie, true);
@@ -1060,10 +1077,43 @@ function handoutHTML(lang = "en") {
       </article>`).join("");
   return page1 + `<section class="h-people">${cards}</section>`;
 }
-function setHandout(lang) {
+function setHandout(kind) {
   const h = $("#handout");
-  h.innerHTML = handoutHTML(lang);
-  h.lang = lang;
+  h.innerHTML = kind === "exit" ? exitTicketsHTML() : handoutHTML(kind);
+  h.lang = kind === "es" ? "es" : "en";
+}
+/* Printable exit tickets: three versions, one per page. */
+function exitTicketsHTML() {
+  const lines = (n) => `<div class="h-lines">${"<div></div>".repeat(n)}</div>`;
+  const head = `
+      <div class="h-namerow"><span class="h-name">Name: <i></i></span><span class="h-date">Date: <i></i></span></div>
+      <header class="h-title"><h1>Exit Ticket</h1><span class="h-sub">The Reign of Terror</span></header>
+      <div class="h-box h-focus"><p>${LESSON.focus}</p></div>`;
+  const part = (label, prompt, body) => `<div class="t-part"><p><span class="h-label">${label}.</span> ${prompt}</p>${body}</div>`;
+  const circle = `<p class="t-circle">The Reign of Terror &nbsp;[ <b>was</b> &nbsp;/&nbsp; <b>was not</b> ]&nbsp; necessary to save the Revolution.</p>`;
+  const names = ["King Louis XVI", "Marie Antoinette", "The Girondins", "Danton", "Robespierre"];
+  const bank = [["treason", "betraying your own country"], ["royalist", "a person who wants a king"], ["revolt", "when people fight against their own government"],
+    ["traitor", "a person who betrays their country"], ["mercy", "choosing not to punish someone"], ["danger", "the threat from enemy armies"],
+    ["fear", "how afraid lawmakers were of the Committee"]];
+  const v1 = head
+    + part("Claim", "Respond to the prompt in one sentence.", lines(3))
+    + part("Evidence", "Choose two people we judged today. Give a fact about their case that supports your claim.", lines(5))
+    + part("Reasoning", "For each piece of evidence, explain how their case supports your claim.", lines(5))
+    + part("Counterargument", "What would someone who disagrees with you say? Use a fact from the game.", lines(5))
+    + part("Rebuttal", "Why is your claim still stronger?", lines(5));
+  const v2 = head
+    + part("Claim", "Circle one below.", circle)
+    + part("Evidence", "Choose two people we judged today. Give a fact about their case that supports your claim.", lines(5))
+    + part("Reasoning", "For each piece of evidence, explain how their case supports your claim.", lines(5));
+  const v3 = head
+    + `<p class="t-note">Use at least 2 terms from the Word Bank below.</p>`
+    + part("Claim", "Circle one below.", circle)
+    + part("Evidence", "Choose one person we judged today.",
+        `<div class="t-people">${names.map((n) => `<div><span>${n}</span><i></i></div>`).join("")}</div>
+         <p style="margin-top:.6em">Give a fact about their case that supports your claim.</p>${lines(5)}`)
+    + part("Reasoning", "Explain how their case supports your claim.", lines(5))
+    + `<div class="t-part"><div class="h-label">Word Bank</div><ul class="t-bank">${bank.map(([w, d]) => `<li><b>${w}</b>: ${d}</li>`).join("")}</ul></div>`;
+  return [v1, v2, v3].map((v) => `<section class="t-ticket">${v}</section>`).join("");
 }
 /* Print a handout; the English one goes back in place afterward so Cmd/Ctrl+P stays English. */
 function printHandout(lang) {
@@ -1073,7 +1123,7 @@ function printHandout(lang) {
   setTimeout(() => setHandout("en"), 500);
 }
 
-function boot(data) { if (data && data.S) S = data.S; else S.screen = "launch"; render(); setHandout(location.hash === "#handout-es" ? "es" : "en"); }
+function boot(data) { if (data && data.S) S = data.S; else S.screen = "launch"; render(); setHandout(location.hash === "#handout-es" ? "es" : location.hash === "#exit-tickets" ? "exit" : "en"); }
 window.claude?.hot?.snapshot?.(() => ({ S: JSON.parse(JSON.stringify(S)) }));
 window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
 </script>
