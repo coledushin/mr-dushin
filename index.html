@@ -3,106 +3,115 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mr. Dushin's Classroom</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f5bd3'/%3E%3Cpath d='M6 10l10-4 10 4-10 4z' fill='%23fff'/%3E%3Cpath d='M10 12.5v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5l-6 2.4z' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=IM+Fell+French+Canon&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
 <style>
   :root {
-    --baize: #1d3a2d;
-    --baize-deep: #12261d;
-    --baize-line: #2f5443;
-    --brass: #c8a148;
-    --cream: #ece4cf;
-    --cream-dim: #afbdac;
-    --paper: #f1e8d2;
-    --paper-shade: #ddcfaf;
-    --ink: #23180f;
-    --ink-soft: #5e4c3b;
-    --red: #a11d1d;
-    --font-body: "Crimson Pro", Georgia, serif;
-    --font-display: "IM Fell French Canon", Georgia, serif;
+    --bg: #f6f7fb;
+    --card: #ffffff;
+    --ink: #1c2233;
+    --muted: #5b6478;
+    --line: #e2e6ef;
+    --accent: #2f5bd3;
+    --shadow: 0 1px 2px rgba(20,30,60,.06), 0 6px 20px rgba(20,30,60,.08);
+    --shadow-hover: 0 2px 4px rgba(20,30,60,.08), 0 14px 32px rgba(20,30,60,.14);
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; }
   body {
     min-height: 100vh;
-    background: radial-gradient(ellipse at top, var(--baize) 0%, var(--baize-deep) 100%) fixed;
-    color: var(--cream);
-    font: 19px/1.45 var(--font-body);
+    background: var(--bg);
+    color: var(--ink);
+    font: 18px/1.5 "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
     display: flex;
     flex-direction: column;
     align-items: center;
     padding: 56px 16px 40px;
   }
   header { text-align: center; max-width: 720px; margin-bottom: 40px; }
-  h1 {
-    font: 400 clamp(36px, 6vw, 56px)/1.05 var(--font-display);
-    margin: 0 0 10px;
-    color: var(--paper);
+  .logo {
+    width: 64px; height: 64px;
+    margin: 0 auto 16px;
+    border-radius: 16px;
+    background: var(--accent);
+    display: grid; place-items: center;
+    box-shadow: var(--shadow);
   }
-  header p { margin: 0; color: var(--cream-dim); font-size: 20px; }
-  .rule { width: 120px; height: 2px; background: var(--brass); margin: 18px auto; border: 0; }
+  .logo svg { width: 40px; height: 40px; }
+  h1 {
+    font-size: clamp(32px, 5vw, 46px);
+    font-weight: 800;
+    letter-spacing: -.02em;
+    line-height: 1.1;
+    margin: 0 0 8px;
+  }
+  header p { margin: 0; color: var(--muted); font-size: 20px; }
 
   main {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
-    gap: 28px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+    gap: 24px;
     width: 100%;
-    max-width: 920px;
+    max-width: 900px;
   }
   .card {
     display: flex;
     flex-direction: column;
-    background: var(--paper);
+    background: var(--card);
     color: var(--ink);
     text-decoration: none;
-    border: 6px solid var(--brass);
-    outline: 1px solid var(--baize-line);
-    box-shadow: 0 2px 4px rgba(0,0,0,.25), 0 12px 32px rgba(0,0,0,.35);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
     transition: transform .15s ease, box-shadow .15s ease;
   }
-  .card:hover, .card:focus-visible {
-    transform: translateY(-4px);
-    box-shadow: 0 4px 8px rgba(0,0,0,.3), 0 18px 40px rgba(0,0,0,.45);
-  }
-  .card:focus-visible { outline: 3px solid var(--paper); outline-offset: 4px; }
+  .card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+  .card:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   .art {
-    height: 170px;
-    background: var(--paper-shade);
-    border-bottom: 1px solid #c7b68f;
+    height: 150px;
     display: grid;
     place-items: center;
   }
-  .art svg { height: 130px; width: auto; }
-  .body { padding: 20px 24px 24px; display: flex; flex-direction: column; flex: 1; }
-  .kicker {
-    font-size: 15px;
-    letter-spacing: .12em;
+  .art svg { height: 110px; width: auto; }
+  .body { padding: 18px 22px 22px; display: flex; flex-direction: column; flex: 1; }
+  .tag {
+    align-self: flex-start;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .04em;
     text-transform: uppercase;
-    color: var(--ink-soft);
+    color: var(--muted);
+    background: var(--bg);
+    border-radius: 999px;
+    padding: 2px 10px;
   }
-  h2 { font: 400 30px/1.15 var(--font-display); margin: 4px 0 10px; }
-  .body p { margin: 0 0 18px; color: var(--ink-soft); flex: 1; }
-  .go { font-weight: 600; color: var(--red); }
+  h2 { font-size: 24px; font-weight: 800; letter-spacing: -.01em; margin: 10px 0 6px; }
+  .body p { margin: 0 0 18px; color: var(--muted); flex: 1; }
+  .go { font-weight: 700; color: var(--accent); }
   .go::after { content: " →"; }
 
-  footer { margin-top: 48px; color: var(--cream-dim); font-size: 15px; }
+  footer { margin-top: 48px; color: var(--muted); font-size: 15px; }
 </style>
 
 <header>
+  <div class="logo" aria-hidden="true">
+    <svg viewBox="0 0 32 32"><path d="M4 11l12-5 12 5-12 5z" fill="#fff"/><path d="M9 13.5v5.5c0 1.9 3.1 3.5 7 3.5s7-1.6 7-3.5v-5.5l-7 2.9z" fill="#fff"/><path d="M27 11v7" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>
+  </div>
   <h1>Mr. Dushin's Classroom</h1>
-  <hr class="rule">
   <p>Pick an activity to begin.</p>
 </header>
 
 <main>
   <a class="card" href="reign-of-terror.html">
-    <div class="art" aria-hidden="true">
+    <div class="art" style="background:#e7efe9" aria-hidden="true">
       <svg viewBox="0 0 32 32">
         <rect x="4.5" y="2.5" width="23" height="3.5" rx=".5" fill="#c8a148"/>
         <rect x="6.5" y="5" width="3.5" height="22" fill="#8a6a2a"/>
         <rect x="22" y="5" width="3.5" height="22" fill="#8a6a2a"/>
-        <path d="M10 6h12v5.5L10 15.5z" fill="#f1e8d2" stroke="#5e4c3b" stroke-width=".4"/>
+        <path d="M10 6h12v5.5L10 15.5z" fill="#fff" stroke="#5e4c3b" stroke-width=".4"/>
         <path d="M10.4 15.3 21.6 11.6" stroke="#a11d1d" stroke-width="1.6" stroke-linecap="round"/>
         <rect x="10" y="19.5" width="12" height="3" fill="#5e4c3b"/>
         <circle cx="16" cy="21" r="1.4" fill="#1d3a2d"/>
@@ -110,7 +119,7 @@
       </svg>
     </div>
     <div class="body">
-      <div class="kicker">France · 1793–1794</div>
+      <span class="tag">France · 1793–1794</span>
       <h2>The Reign of Terror</h2>
       <p>Sit on the Committee of Public Safety. Decide the fate of the King, the Queen, the Girondins, Danton and Robespierre, then see what really happened.</p>
       <span class="go">Play</span>
@@ -118,16 +127,16 @@
   </a>
 
   <a class="card" href="Deutsches_Reich_interaktiv.html">
-    <div class="art" aria-hidden="true">
+    <div class="art" style="background:#f6e9e6" aria-hidden="true">
       <svg viewBox="0 0 40 32">
-        <path d="M6 6 15 3l7 3 8-2 5 6-3 7 3 6-8 5-9-2-8 3-5-6 2-7-3-6z" fill="#f1e8d2" stroke="#5e4c3b" stroke-width=".6"/>
+        <path d="M6 6 15 3l7 3 8-2 5 6-3 7 3 6-8 5-9-2-8 3-5-6 2-7-3-6z" fill="#fff" stroke="#5e4c3b" stroke-width=".6"/>
         <path d="M15 3l-1 9 8 3 7-4M14 12l-6 6M22 15l1 13M23 21l10-1" fill="none" stroke="#5e4c3b" stroke-width=".5"/>
-        <path d="M14 12l8 3 7-4 1-7-8 2-7-3z" fill="#a11d1d" opacity=".75"/>
-        <circle cx="19" cy="10" r="1" fill="#23180f"/>
+        <path d="M14 12l8 3 7-4 1-7-8 2-7-3z" fill="#9b1c1c" opacity=".75"/>
+        <circle cx="19" cy="10" r="1" fill="#1f1d1a"/>
       </svg>
     </div>
     <div class="body">
-      <div class="kicker">Germany & Italy · 19th century</div>
+      <span class="tag">Germany &amp; Italy · 1800s</span>
       <h2>Before Unification</h2>
       <p>An interactive map of the German Empire and of Italy before unification. Click any state to see where it came from and what happened next.</p>
       <span class="go">Explore</span>
