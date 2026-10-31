@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox=".4 -1 26 26" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Lucide "book-open" and "feather", filled -->
+  <g transform="translate(0 2.4)" stroke-width="1.1">
+    <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" fill="#f3e3c0"/>
+    <path d="M12 7v14"/>
+  </g>
+  <g transform="translate(11.6 -.5) scale(.66)" stroke-width="1.65">
+    <path d="M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z" fill="#fff"/>
+    <path d="M16 8 2 22M17.5 15H9"/>
+  </g>
+</svg>
