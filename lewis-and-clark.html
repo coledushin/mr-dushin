@@ -889,10 +889,10 @@ function makeStyle() {
           "color-relief-color": ["interpolate", ["linear"], ["elevation"], -10000, "#bfd3d1", -2, "#bfd3d1", 0, "rgba(191,211,209,0)"] } },
       { id: "rivers", type: "line", source: "rivers", layout: { "line-cap": "round", "line-join": "round" },
         paint: { "line-color": "#7ea3ad", "line-width": ["interpolate", ["linear"], ["zoom"], 2, 0.6, 5, 1.4, 8, 2.6] } },
-      // borders as they stood in 1805: U.S. states and territories, New Spain, and the U.S.
+      // borders as they stood in 1805: U.S. states and territories, New Spain, British North America, and the U.S.
       { id: "border-states", type: "line", source: "borders", filter: ["==", ["get", "k"], "state"], layout: { "line-join": "round" },
         paint: { "line-color": "#9c8566", "line-width": ["interpolate", ["linear"], ["zoom"], 2, 0.4, 7, 1.2], "line-dasharray": [3, 2], "line-opacity": 0.75 } },
-      { id: "border-spain", type: "line", source: "borders", filter: ["==", ["get", "k"], "spain-outer"], layout: { "line-join": "round" },
+      { id: "border-nations", type: "line", source: "borders", filter: ["in", ["get", "k"], ["literal", ["spain-outer", "british"]]], layout: { "line-join": "round" },
         paint: { "line-color": "#7a5c40", "line-width": ["interpolate", ["linear"], ["zoom"], 2, 0.8, 7, 2], "line-opacity": 0.8 } },
       { id: "border-us", type: "line", source: "fills", filter: ["==", ["get", "k"], "us"], layout: { "line-join": "round" },
         paint: { "line-color": "#7a5c40", "line-width": ["interpolate", ["linear"], ["zoom"], 2, 0.8, 7, 2], "line-opacity": 0.8 } },
@@ -933,6 +933,12 @@ try {
   map.touchZoomRotate.disableRotation();
   map.keyboard.disableRotation();
   map.addControl(new maplibregl.AttributionControl({ compact: true }), "top-left");
+  // start with the credits folded into the (i) button: MapLibre opens them once by itself, so close them that first time
+  const credits = map.getContainer().querySelector(".maplibregl-ctrl-attrib");
+  const fold = obs => { if (credits.classList.contains("maplibregl-compact-show")) { credits.classList.remove("maplibregl-compact-show"); obs.disconnect(); } };
+  const watch = new MutationObserver((_, obs) => fold(obs));
+  watch.observe(credits, { attributes: true, attributeFilter: ["class"] });
+  fold(watch);
   // zoomed all the way out, stop names crowd each other: show only the one being viewed
   map.on("zoom", () => $("#mapwrap").classList.toggle("far", map.getZoom() < 4.4));
 } catch (e) {
