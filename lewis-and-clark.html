@@ -150,7 +150,6 @@
   .legend i { display: inline-block; width: 22px; height: 0; vertical-align: middle; margin-right: 7px; border-top: 4px solid; border-radius: 3px; }
   .legend i.sw { height: 12px; border: 0; border-radius: 3px; }
   .legend .row { display: flex; align-items: center; }
-  .legend .cols { display: grid; grid-template-columns: auto auto; column-gap: 14px; }
   .compass { position: absolute; right: 18px; top: 14px; width: 64px; height: 64px; opacity: .75; pointer-events: none; }
   .toast {
     position: absolute; left: 50%; top: 16px; transform: translate(-50%, -12px);
@@ -395,7 +394,7 @@
     display: block; width: 100%; margin-top: 4px; border: 0; border-bottom: 2px solid #8b7558; background: transparent;
     font-family: var(--hand); font-size: 34px; padding: 0 4px; color: #1d2d6b; outline: none;
   }
-  .resume { margin-top: 14px; font-size: 14.5px; color: var(--muted); }
+  .letter .resume { margin: 20px 0 0; font-size: 14.5px; color: var(--muted); }
   .resume button { background: none; border: 0; padding: 0; color: var(--rust-dark); font-weight: 800; text-decoration: underline; }
 
   /* ---------- Finale ---------- */
@@ -500,7 +499,7 @@
       <label for="name-in">Sign your name to enlist
         <input id="name-in" autocomplete="off" maxlength="40" placeholder="Your name">
       </label>
-      <button class="btn big green" id="enlist" disabled>Getting the map ready…</button>
+      <button class="btn big green" id="enlist" disabled>Loading…</button>
     </div>
     <p class="resume" id="resume" hidden></p>
   </div>
@@ -946,9 +945,12 @@ try {
 }
 // don't hold the quest hostage to a slow map: start after 5 seconds regardless
 const mapReady = map ? Promise.race([new Promise(r => map.once("style.load", () => r(styleOK = true))), new Promise(r => setTimeout(r, 5000))]) : Promise.resolve();
-if (map) map.once("style.load", () => window.MAP_SCENERY.then(scenery => {
-  if (scenery) for (const k of ["base", "fills", "rivers", "borders"]) map.getSource(k).setData(scenery[k]);
-}));
+if (map) map.once("style.load", () => {
+  if (started && !traveling) drawProgress(); // the map was slow and the quest started without it
+  window.MAP_SCENERY.then(scenery => {
+    if (scenery) for (const k of ["base", "fills", "rivers", "borders"]) map.getSource(k).setData(scenery[k]);
+  });
+});
 const paint = (layer, prop, value) => { if (styleOK) map.setPaintProperty(layer, prop, value); };
 const marker = (element, opts, lngLat) => map ? new maplibregl.Marker({ element, ...opts }).setLngLat(lngLat).addTo(map) : { getElement: () => element, setLngLat() { return this; } };
 
@@ -1333,18 +1335,6 @@ const ACTS = {
     });
   },
 
-  decision(st, box, res) {
-    const a = st.act;
-    box.innerHTML = `<p class="prompt">${a.prompt}</p><div class="opts">${a.options.map((o, i) => `<button class="opt" data-i="${i}">${esc(o.t)}<small hidden></small></button>`).join("")}</div><div id="fb"></div>`;
-    const btns = [...box.querySelectorAll(".opt")];
-    const show = ch => {
-      btns.forEach((b, i) => { b.disabled = true; const s = b.querySelector("small"); s.textContent = a.options[i].why; s.hidden = false; b.classList.add(i === ch ? "sel" : "dim"); });
-      box.querySelector("#fb").innerHTML = fb("info", a.reveal);
-    };
-    if (res) { show(res.choice); box.insertAdjacentHTML("beforeend", reviewBanner(res)); return; }
-    btns.forEach((b, i) => b.onclick = () => { show(i); complete(st, 10, "you chose: " + a.options[i].t.replace(/\.$/, "")); S.results[st.id].choice = i; save(); });
-  },
-
   match(st, box, res) {
     const a = st.act, L = shuffle(a.pairs.map((_, i) => i)), R = shuffle(a.pairs.map((_, i) => i));
     box.innerHTML = `<p class="prompt">${a.prompt}</p><p class="hint">${a.hint}</p><div class="match"><div class="col">${L.map(i => `<button class="m-item animal" data-i="${i}"><span class="ico">${a.pairs[i].ico}</span>${esc(a.pairs[i].a)}</button>`).join("")}</div><div class="col">${R.map(i => `<button class="m-item desc" data-i="${i}">${esc(a.pairs[i].d)}</button>`).join("")}</div></div><div id="fb"></div>`;
@@ -1426,8 +1416,8 @@ const ACTS = {
 
   route(st, box, res) {
     const a = st.act;
-    if (!map) return ACTS.mc({ id: st.id, act: { reveal: a.reveal,
-      prompt: "The map couldn't load, so use the reading: which way did Lewis go when the captains split up?",
+    if (!styleOK) return ACTS.mc({ id: st.id, act: { reveal: a.reveal,
+      prompt: "The map didn't load, so use the reading: which way did Lewis go when the captains split up?",
       options: [
         { t: "North, toward the Marias River and the Blackfeet", ok: true, why: "Right — Lewis explored the Marias River to the north." },
         { t: "South, down the Yellowstone River", ok: false, why: "That was Clark's route. Check the reading again." },
@@ -1573,16 +1563,24 @@ function restart() {
 
 /* ===================== Start ===================== */
 const intro = $("#intro"), nameIn = $("#name-in");
-async function begin() {
-  intro.hidden = true;
-  await mapReady;
-  refreshChrome();
-  if (S.finished) return finale();
+let started = false;
+// the trail drawn as far as the student has traveled
+function drawProgress() {
+  if (S.finished) { drawTrail(TRAIL.len); drawReturn(2); return; }
   const bf = STOPS.findIndex(s => s.id === "blackfeet");
   const cur = Math.min(S.unlocked, STOPS.length - 1), st = STOPS[cur];
   drawTrail(cur >= bf ? TRAIL.len : st.d);
   drawReturn(cur < bf ? 0 : st.id === "stlouis" ? 2 : 1);
-  placePin(D[st.id]);
+}
+async function begin() {
+  intro.hidden = true;
+  await mapReady;
+  started = true;
+  refreshChrome();
+  if (S.finished) return finale();
+  const cur = Math.min(S.unlocked, STOPS.length - 1);
+  drawProgress();
+  placePin(D[STOPS[cur].id]);
   openStop(cur);
 }
 function showIntro() {
