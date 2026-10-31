@@ -76,6 +76,7 @@
     font-size: 13px; line-height: 1.25; text-align: center; white-space: nowrap;
   }
   .stat b { display: block; font-size: 17px; color: #fff; }
+  .stat .short { display: none; }
   .stat.bump b { animation: bump .6s ease; }
   @keyframes bump { 30% { transform: scale(1.35); color: var(--gold); } }
   @keyframes pulse { 50% { opacity: .45; } }
@@ -150,7 +151,7 @@
   .legend i { display: inline-block; width: 22px; height: 0; vertical-align: middle; margin-right: 7px; border-top: 4px solid; border-radius: 3px; }
   .legend i.sw { height: 12px; border: 0; border-radius: 3px; }
   .legend .row { display: flex; align-items: center; }
-  .compass { position: absolute; right: 18px; top: 14px; width: 64px; height: 64px; opacity: .75; pointer-events: none; }
+  .compass { position: absolute; right: 16px; top: 12px; width: 70px; height: 76px; pointer-events: none; filter: drop-shadow(0 2px 3px rgba(40,25,10,.3)); }
   .toast {
     position: absolute; left: 50%; top: 16px; transform: translate(-50%, -12px);
     background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow);
@@ -427,12 +428,14 @@
     .trail-pips { display: none; }
     .brand { font-size: 19px; flex: 1; }
     .legend { display: none; }
-    .compass { width: 48px; height: 48px; }
+    .compass { width: 50px; height: 55px; }
   }
   @media (max-width: 560px) {
     .topbar { padding: 8px 12px; gap: 10px; }
     .topbar a.home span { display: none; }
     .stat { padding: 2px 8px; }
+    .stat .long { display: none; }
+    .stat .short { display: inline; }
     .panel-inner { padding: 20px 16px 36px; }
     .pack-grid, .cards { grid-template-columns: 1fr; }
     .match { grid-template-columns: 1fr; }
@@ -448,7 +451,7 @@
   <div class="brand">The Corps of Discovery</div>
   <nav class="trail-pips" id="pips" aria-label="Expedition stops"></nav>
   <div class="stats">
-    <div class="stat" id="stat-day"><b id="day-n">—</b>Expedition day</div>
+    <div class="stat" id="stat-day"><b id="day-n">—</b><span class="long">Expedition day</span><span class="short">Day</span></div>
     <div class="stat" id="stat-pts"><b id="pts-n">0</b>Points</div>
   </div>
 </header>
@@ -457,14 +460,7 @@
   <section class="mapwrap" id="mapwrap" aria-label="Map of the Lewis and Clark Expedition">
     <div id="map"></div>
     <div class="map-off"><b>The map couldn't load.</b>You can still do the whole quest. Reload the page later to see the map.</div>
-    <svg class="compass" viewBox="-50 -50 100 100" aria-hidden="true">
-      <circle r="40" fill="none" stroke="#6f604e" stroke-width="1.5"/>
-      <circle r="34" fill="none" stroke="#6f604e" stroke-width=".6"/>
-      <path d="M0 -46 L7 0 L0 46 L-7 0Z" fill="#6f604e"/>
-      <path d="M-46 0 L0 -7 L46 0 L0 7Z" fill="#a8977e"/>
-      <path d="M0 -46 L7 0 L-7 0Z" fill="#b4572e"/>
-      <text y="-30" text-anchor="middle" font-size="14" font-family="Georgia" fill="#2b2118" font-weight="700" dy="-20">N</text>
-    </svg>
+    <svg class="compass" viewBox="-54 -64 108 118" aria-hidden="true"><defs><radialGradient id="cmp-face" r=".5"><stop offset=".6" stop-color="#fbf5e6" stop-opacity=".92"/><stop offset="1" stop-color="#efe2c4" stop-opacity=".92"/></radialGradient></defs><circle r="40.5" fill="url(#cmp-face)" stroke="#3b2e22" stroke-width="1.4"/><circle r="34" fill="none" stroke="#3b2e22" stroke-width=".6"/><g stroke="#3b2e22" stroke-width=".7" stroke-linecap="round"><path d="M0.0,-34.0L0.0,-39.0"/><path d="M6.6,-33.3L7.0,-35.3"/><path d="M13.0,-31.4L14.3,-34.6"/><path d="M18.9,-28.3L20.0,-29.9"/><path d="M24.0,-24.0L26.4,-26.4"/><path d="M28.3,-18.9L29.9,-20.0"/><path d="M31.4,-13.0L34.6,-14.3"/><path d="M33.3,-6.6L35.3,-7.0"/><path d="M34.0,0.0L39.0,0.0"/><path d="M33.3,6.6L35.3,7.0"/><path d="M31.4,13.0L34.6,14.3"/><path d="M28.3,18.9L29.9,20.0"/><path d="M24.0,24.0L26.4,26.4"/><path d="M18.9,28.3L20.0,29.9"/><path d="M13.0,31.4L14.3,34.6"/><path d="M6.6,33.3L7.0,35.3"/><path d="M0.0,34.0L0.0,39.0"/><path d="M-6.6,33.3L-7.0,35.3"/><path d="M-13.0,31.4L-14.3,34.6"/><path d="M-18.9,28.3L-20.0,29.9"/><path d="M-24.0,24.0L-26.4,26.4"/><path d="M-28.3,18.9L-29.9,20.0"/><path d="M-31.4,13.0L-34.6,14.3"/><path d="M-33.3,6.6L-35.3,7.0"/><path d="M-34.0,0.0L-39.0,0.0"/><path d="M-33.3,-6.6L-35.3,-7.0"/><path d="M-31.4,-13.0L-34.6,-14.3"/><path d="M-28.3,-18.9L-29.9,-20.0"/><path d="M-24.0,-24.0L-26.4,-26.4"/><path d="M-18.9,-28.3L-20.0,-29.9"/><path d="M-13.0,-31.4L-14.3,-34.6"/><path d="M-6.6,-33.3L-7.0,-35.3"/></g><circle r="15" fill="none" stroke="#c8962e" stroke-width=".8" stroke-dasharray="1.2 1.6"/><path d="M0,0L8.4,-20.3L0.0,-4.5Z" fill="#3b2e22"/><path d="M0,0L8.4,-20.3L3.2,-3.2Z" fill="#f7efdc"/><path d="M0.0,-4.5L8.4,-20.3L3.2,-3.2" fill="none" stroke="#3b2e22" stroke-width="0.5" stroke-linejoin="round"/><path d="M0,0L20.3,-8.4L3.2,-3.2Z" fill="#3b2e22"/><path d="M0,0L20.3,-8.4L4.5,0.0Z" fill="#f7efdc"/><path d="M3.2,-3.2L20.3,-8.4L4.5,0.0" fill="none" stroke="#3b2e22" stroke-width="0.5" stroke-linejoin="round"/><path d="M0,0L20.3,8.4L4.5,0.0Z" fill="#3b2e22"/><path d="M0,0L20.3,8.4L3.2,3.2Z" fill="#f7efdc"/><path d="M4.5,0.0L20.3,8.4L3.2,3.2" fill="none" stroke="#3b2e22" stroke-width="0.5" stroke-linejoin="round"/><path d="M0,0L8.4,20.3L3.2,3.2Z" fill="#3b2e22"/><path d="M0,0L8.4,20.3L0.0,4.5Z" fill="#f7efdc"/><path d="M3.2,3.2L8.4,20.3L0.0,4.5" fill="none" stroke="#3b2e22" stroke-width="0.5" stroke-linejoin="round"/><path d="M0,0L-8.4,20.3L0.0,4.5Z" fill="#3b2e22"/><path d="M0,0L-8.4,20.3L-3.2,3.2Z" fill="#f7efdc"/><path d="M0.0,4.5L-8.4,20.3L-3.2,3.2" fill="none" stroke="#3b2e22" stroke-width="0.5" stroke-linejoin="round"/><path d="M0,0L-20.3,8.4L-3.2,3.2Z" fill="#3b2e22"/><path d="M0,0L-20.3,8.4L-4.5,0.0Z" fill="#f7efdc"/><path d="M-3.2,3.2L-20.3,8.4L-4.5,0.0" fill="none" stroke="#3b2e22" stroke-width="0.5" stroke-linejoin="round"/><path d="M0,0L-20.3,-8.4L-4.5,0.0Z" fill="#3b2e22"/><path d="M0,0L-20.3,-8.4L-3.2,-3.2Z" fill="#f7efdc"/><path d="M-4.5,0.0L-20.3,-8.4L-3.2,-3.2" fill="none" stroke="#3b2e22" stroke-width="0.5" stroke-linejoin="round"/><path d="M0,0L-8.4,-20.3L-3.2,-3.2Z" fill="#3b2e22"/><path d="M0,0L-8.4,-20.3L-0.0,-4.5Z" fill="#f7efdc"/><path d="M-3.2,-3.2L-8.4,-20.3L-0.0,-4.5" fill="none" stroke="#3b2e22" stroke-width="0.5" stroke-linejoin="round"/><path d="M0,0L21.9,-21.9L0.0,-6.5Z" fill="#3b2e22"/><path d="M0,0L21.9,-21.9L6.5,0.0Z" fill="#f7efdc"/><path d="M0.0,-6.5L21.9,-21.9L6.5,0.0" fill="none" stroke="#3b2e22" stroke-width="0.6" stroke-linejoin="round"/><path d="M0,0L21.9,21.9L6.5,0.0Z" fill="#3b2e22"/><path d="M0,0L21.9,21.9L0.0,6.5Z" fill="#f7efdc"/><path d="M6.5,0.0L21.9,21.9L0.0,6.5" fill="none" stroke="#3b2e22" stroke-width="0.6" stroke-linejoin="round"/><path d="M0,0L-21.9,21.9L0.0,6.5Z" fill="#3b2e22"/><path d="M0,0L-21.9,21.9L-6.5,0.0Z" fill="#f7efdc"/><path d="M0.0,6.5L-21.9,21.9L-6.5,0.0" fill="none" stroke="#3b2e22" stroke-width="0.6" stroke-linejoin="round"/><path d="M0,0L-21.9,-21.9L-6.5,0.0Z" fill="#3b2e22"/><path d="M0,0L-21.9,-21.9L-0.0,-6.5Z" fill="#f7efdc"/><path d="M-6.5,0.0L-21.9,-21.9L-0.0,-6.5" fill="none" stroke="#3b2e22" stroke-width="0.6" stroke-linejoin="round"/><path d="M0,0L47.0,0.0L6.4,-6.4Z" fill="#3b2e22"/><path d="M0,0L47.0,0.0L6.4,6.4Z" fill="#f7efdc"/><path d="M6.4,-6.4L47.0,0.0L6.4,6.4" fill="none" stroke="#3b2e22" stroke-width="0.7" stroke-linejoin="round"/><path d="M0,0L0.0,47.0L6.4,6.4Z" fill="#3b2e22"/><path d="M0,0L0.0,47.0L-6.4,6.4Z" fill="#f7efdc"/><path d="M6.4,6.4L0.0,47.0L-6.4,6.4" fill="none" stroke="#3b2e22" stroke-width="0.7" stroke-linejoin="round"/><path d="M0,0L-47.0,0.0L-6.4,6.4Z" fill="#3b2e22"/><path d="M0,0L-47.0,0.0L-6.4,-6.4Z" fill="#f7efdc"/><path d="M-6.4,6.4L-47.0,0.0L-6.4,-6.4" fill="none" stroke="#3b2e22" stroke-width="0.7" stroke-linejoin="round"/><path d="M0,0L0.0,-47.0L-6.4,-6.4Z" fill="#7f3415"/><path d="M0,0L0.0,-47.0L6.4,-6.4Z" fill="#b4572e"/><path d="M-6.4,-6.4L0.0,-47.0L6.4,-6.4" fill="none" stroke="#3b2e22" stroke-width="0.7" stroke-linejoin="round"/><circle r="2" fill="#c8962e" stroke="#3b2e22" stroke-width=".6"/><text y="-50" text-anchor="middle" font-family="IM Fell English, Georgia, serif" font-size="15" fill="#3b2e22" stroke="#fbf5e6" stroke-width="3" stroke-linejoin="round" paint-order="stroke">N</text></svg>
     <div class="legend" aria-hidden="true">
       <div class="row"><i style="border-color:#2e6b4f"></i>Trip west (1804–1805)</div>
       <div class="row"><i style="border-color:#b8442f"></i>Trip home (1806)</div>
