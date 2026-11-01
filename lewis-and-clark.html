@@ -1597,7 +1597,7 @@ function showIntro() {
     $("#enlist").textContent = "Continue the journey →";
     $("#fresh").onclick = restart;
   }
-  if (document.activeElement !== nameIn) setTimeout(() => nameIn.focus(), 300);
+  if (document.activeElement !== nameIn) setTimeout(() => nameIn.focus({ preventScroll: true }), 300);
 }
 $("#enlist").onclick = () => {
   const n = nameIn.value.trim();

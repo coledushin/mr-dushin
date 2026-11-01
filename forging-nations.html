@@ -9,11 +9,11 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Caveat:wght@500;700&display=swap">
 <link rel="stylesheet" href="vendor/maplibre-gl/maplibre-gl.css">
 <script src="vendor/maplibre-gl/maplibre-gl.js" defer></script>
-<link rel="preload" href="unification-map.json?v=4" as="fetch" crossorigin>
+<link rel="preload" href="unification-map.json?v=5" as="fetch" crossorigin>
 <script>
   // borders for every year of the game load alongside the page and fill in when ready;
   // bump ?v= whenever the map file changes, so browsers don't keep an old copy
-  window.MAP_DATA = fetch("unification-map.json?v=4").then(r => r.ok ? r.json() : null).catch(() => null);
+  window.MAP_DATA = fetch("unification-map.json?v=5").then(r => r.ok ? r.json() : null).catch(() => null);
 </script>
 <style>
   :root {
@@ -181,7 +181,7 @@
   .advisor.out { animation: advOut .3s ease forwards; }
   @keyframes advOut { to { transform: translateY(30px); opacity: 0; } }
   .frame {
-    width: 120px; height: 160px; position: relative; z-index: 1; margin-bottom: 10px;
+    width: 120px; height: 160px; position: relative; z-index: 1;
     border-radius: 6px; padding: 5px;
     background: linear-gradient(135deg, #f6dc94, #b7862a 35%, #f3d585 55%, #8f6418);
     box-shadow: inset 0 0 0 1px rgba(255,255,255,.4), 0 0 0 1px #4d3510;
@@ -192,7 +192,7 @@
   }
   .frame::after { content: ""; position: absolute; inset: 5px; border-radius: 3px; box-shadow: inset 0 0 18px rgba(40,20,0,.55); pointer-events: none; }
   .bubble {
-    position: relative; margin-left: -14px; padding: 12px 18px 12px 30px; min-height: 150px; display: flex; flex-direction: column;
+    position: relative; margin-left: -14px; padding: 12px 18px 12px 30px; min-height: 160px; display: flex; flex-direction: column;
     background: linear-gradient(#fbf5e4, #f1e5c3); border: 1px solid #8a6e45; border-radius: 6px;
     box-shadow: inset 0 0 0 3px #fbf5e4, inset 0 0 0 4px rgba(138,110,69,.5);
   }
@@ -321,6 +321,7 @@
   .next-bar .todo { color: var(--muted); font-size: 14px; font-weight: 700; flex: 1; min-width: 160px; }
 
   .methods { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px !important; font-size: 13.5px !important; font-weight: 700; color: var(--muted); }
+  .methods span { flex-basis: 100%; }
   .methods i { font-style: normal; font-size: 12.5px; color: #fff; background: var(--c); border-radius: 4px; padding: 2px 8px; }
   .compare { margin-top: 12px; padding: 12px 16px 12px 12px; border-radius: 6px; background: #eef1f6; border: 1px solid #c3cbdb; border-left: 5px solid var(--blue); display: flex; gap: 10px; align-items: flex-start; }
   .compare > svg, .compare .pinmark { width: 26px; height: 26px; flex-shrink: 0; color: var(--blue); margin-top: 1px; }
@@ -338,6 +339,7 @@
   .btn .scales { width: 20px; height: 20px; }
   .cmp-btn:hover { background: rgba(195,154,62,.32); color: #fff; }
   .letter.sheet { width: min(900px, 100%); }
+  .letter.sheet.finale { width: min(620px, 100%); }
   .letter .close { position: absolute; right: 18px; top: 16px; }
   .ledger { display: grid; margin: 10px 0 4px; border: 1px solid #8a6e45; border-radius: 4px; overflow: hidden; background: var(--card); text-align: left; }
   .lg-row { display: grid; grid-template-columns: 170px 1fr 1fr; border-top: 1px solid var(--line); }
@@ -378,12 +380,15 @@
     background: rgba(248,241,223,.78); backdrop-filter: blur(2px) grayscale(.4); animation: fadeIn .3s ease;
   }
   @keyframes fadeIn { from { opacity: 0; } }
+  .hush.now { animation: none; }
   .hush-card {
     display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; max-width: 300px;
     background: var(--wood); color: #f3e6c6; border: 1px solid var(--gold); border-radius: 8px; padding: 16px 20px; box-shadow: var(--shadow);
   }
   .hush-card img { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; object-position: 50% 25%; border: 2px solid var(--gold); filter: sepia(.35); }
-  .hush-card img + img { margin-top: -8px; }
+  .hush-card .faces { display: flex; }
+  .hush-card img + img { margin-left: -18px; }
+  .hush-card .arrow { margin-right: 8px; }
   .hush-card b { font-family: var(--serif); font-weight: 400; font-size: 22px; color: var(--gold-hi); }
   .hush-card span { font-size: 15px; }
   .hush-card em { font-style: normal; font-weight: 800; color: #fff; }
@@ -561,6 +566,13 @@
   </div>
 </div>
 
+<div class="overlay" id="ending-ov" hidden>
+  <div class="letter sheet finale" role="dialog" aria-labelledby="ending-h">
+    <button class="btn ghost small close" id="ending-close" aria-label="Close your final results">✕ Close</button>
+    <div id="ending-body"></div>
+  </div>
+</div>
+
 <div class="overlay" id="intro">
   <div class="letter" role="dialog" aria-labelledby="intro-h">
     <p class="dateline">Europe, in the middle of the nineteenth century</p>
@@ -609,6 +621,7 @@ const GLOSS = {
   "risorgimento": "Italian for “rising again”: the movement to unite Italy in the 1800s.",
   "republic": "A country with no king or queen, where the leaders are chosen by the people.",
   "constitution": "A written set of basic laws that says how a country is governed and limits the ruler's power.",
+  "liberal": "In the 1800s, someone who wanted a constitution, an elected parliament with real power, and rights like free speech, instead of rule by a king alone.",
   "papal states": "The lands in central Italy that the Pope ruled as a king.",
   "prime minister": "The head of a king's government, who runs the country day to day.",
   "plebiscite": "A vote by all the people on one big question, such as “Should we join Sardinia?”",
@@ -665,12 +678,12 @@ it: {
     brief: [
       "In 1852 King Victor Emmanuel II chose a new {{prime minister}}: <strong>Count Camillo di Cavour</strong>. Cavour was not a dreamer like Mazzini. He was a practical and very clever politician.",
       "Cavour made Sardinia modern. He built railways, encouraged trade and factories, and improved the army. He wanted Italians everywhere to look at Sardinia and think: <em>that</em> is the state that should lead Italy.",
-      "Meanwhile there is a war far away. Britain and France are fighting Russia in the <strong>Crimean War</strong>, by the Black Sea.",
+      "That is why the <strong>Crimean War</strong> matters to Cavour. It has nothing to do with Italy, but the two powers fighting Russia, Britain and France, are the friends Sardinia needs.",
     ],
     talk: [
       ["cavour", "Good day. I am Count Cavour, Prime Minister of Sardinia. Mazzini's revolutions failed. I prefer careful plans. Politics, I like to say, is the art of the possible."],
       ["cavour", "Austria is too strong for us alone. We need a powerful friend, and the best choice is France, ruled by Emperor Napoleon III."],
-      ["cavour", "Britain and France have asked us to send soldiers to the Crimean War. Italy has no quarrel with Russia… but this could be our chance. What should we do?"],
+      ["cavour", "Britain and France are at war with Russia, far away by the Black Sea. They have asked us to send soldiers to this Crimean War. Italy has no quarrel with Russia… but this could be our chance. What should we do?"],
     ],
     ask: "Should Sardinia join a faraway war that has nothing to do with Italy?",
     options: [
@@ -689,10 +702,10 @@ it: {
     brief: [
       "Napoleon III, Emperor of the French, wanted to weaken Austria and make France the leading power in Europe.",
       "In July 1858 Cavour secretly traveled to the French spa town of Plombières to meet him. No one was supposed to know.",
-      "Napoleon III made an offer: France would help Sardinia fight Austria, but only if Austria started the war. And France wanted a reward.",
+      "Napoleon III set two conditions for his help. Austria had to start the war, so that France would not look like the attacker, and France would get Savoy and Nice as its reward.",
     ],
     talk: [
-      ["napoleon3", "Monsieur Cavour, welcome. Let us speak frankly. I am ready to send 200,000 French soldiers to drive Austria out of northern Italy."],
+      ["napoleon3", "Monsieur Cavour, welcome to Plombières. No one must know we met, so let us speak frankly. If Austria starts a war, I am ready to send 200,000 French soldiers to drive it out of northern Italy."],
       ["napoleon3", "In return, France would like two of your provinces: Savoy and Nice. They lie on our side of the Alps, and many people there speak French."],
       ["cavour", "Nice is the hometown of Garibaldi, one of our greatest heroes. Giving it away will make many Italians furious. But without France we cannot beat Austria. What do you advise?"],
     ],
@@ -713,13 +726,13 @@ it: {
     changes: ["Lombardy joins Sardinia", "Central Italy votes to join · Nice and Savoy go to France"],
     brief: [
       "French and Sardinian armies beat the Austrians at <strong>Magenta</strong> and <strong>Solferino</strong> in June 1859.",
-      "Then Napoleon III surprised everyone. Without asking Cavour, he made peace with Austria at Villafranca. Sardinia would get Lombardy, but Austria would keep Venetia. Cavour was so angry that he resigned.",
+      "Then Napoleon III surprised everyone. Without asking Cavour, he made peace with Austria at Villafranca. Sardinia would get Lombardy, but Austria would keep Venetia. Cavour was so angry that he resigned, though he returned in January 1860.",
       "Meanwhile, the people of Tuscany, Parma, Modena and the Romagna (the northern part of the Papal States) drove out their rulers. They wanted to join Sardinia.",
     ],
     talk: [
-      ["victor", "I am Victor Emmanuel II, King of Sardinia. We have won Lombardy, but Venetia is still Austrian. Napoleon III left us halfway!"],
+      ["victor", "I am Victor Emmanuel II, King of Sardinia. Together with France we beat Austria and won Lombardy. But Napoleon III made peace without asking us, and Venetia is still Austrian. He left us halfway!"],
       ["victor", "Still, there is good news. The people of central Italy have thrown out their dukes and want to join my kingdom."],
-      ["cavour", "I am back as Prime Minister. The peace treaty says the old rulers should return, and the great powers are watching us closely. How should central Italy join us?"],
+      ["cavour", "I resigned in anger over that peace, but I am back as Prime Minister. The peace treaty says the old rulers should return, and the great powers are watching us closely. How should central Italy join us?"],
     ],
     ask: "The people of central Italy want to join Sardinia. How should it happen?",
     options: [
@@ -731,7 +744,7 @@ it: {
         why: "The old rulers had no support at home and could only have returned with Austrian soldiers." },
     ],
     history: "In March 1860 central Italy held {{plebiscite}}s, and huge majorities voted to join Sardinia (historians think the voting was not always fair or secret). Napoleon III agreed, but only after Cavour paid the price promised at Plombières: Nice and Savoy were handed to France. Look at the map: Sardinia has more than doubled in size.",
-    journal: "Was a plebiscite (a vote) a fair way to decide whether central Italy should join Sardinia? Explain why or why not.",
+    journal: "Central Italy voted on whether to join Sardinia. Give one reason the vote was fair, or one reason it was not.",
   },
   {
     id: "it5", yr: 1860, when: "May–September 1860", title: "The Expedition of the Thousand", place: "Marsala, Sicily",
@@ -765,7 +778,7 @@ it: {
     brief: [
       "Garibaldi's next goal was Rome. But French soldiers guarded Rome to protect the Pope. An attack on Rome could start a war with France and ruin everything.",
       "So Cavour sent the Sardinian army south through the Pope's lands in the Marche and Umbria, going around Rome itself, to meet Garibaldi before he could march on the city.",
-      "Now Garibaldi, who has always wanted a republic, holds all of southern Italy. King Victor Emmanuel is riding to meet him.",
+      "Now Garibaldi, who has always wanted a republic, holds all of southern Italy, and he and the king have met near the town of Teano.",
     ],
     talk: [
       ["victor", "General Garibaldi, I have come south with my army. Italy owes you a great deal."],
@@ -782,7 +795,7 @@ it: {
         why: "France protected the Pope. Attacking Rome in 1860 would probably have meant war with France." },
     ],
     history: "On 26 October 1860 Garibaldi met Victor Emmanuel at Teano and greeted him as “King of Italy.” Plebiscites in the south approved joining. Garibaldi refused every reward and went home to his farm. On 17 March 1861 the <strong>Kingdom of Italy</strong> was proclaimed, with Victor Emmanuel II as its king. Still missing: Venetia and Rome.",
-    journal: "Garibaldi gave away the land he had conquered. Why do you think he did it? Would you have done the same?",
+    journal: "Garibaldi wanted a republic, but he gave the south to the king. Why do you think he did it?",
   },
   {
     id: "it7", yr: 1866, when: "1866", title: "Winning Venetia", place: "Venice, Venetia",
@@ -793,7 +806,7 @@ it: {
       "In Prussia, a powerful minister named <strong>Otto von Bismarck</strong> was planning a war against Austria for control of Germany. He needed an ally to attack Austria from the south.",
     ],
     talk: [
-      ["victor", "The Prussians have sent us a secret offer. If we attack Austria together with them, and they win, Venetia will be ours."],
+      ["victor", "Austria still holds Venetia. Now the Prussians, who are preparing for their own war with Austria, have sent us a secret offer. If we attack Austria together with them, and they win, Venetia will be ours."],
       ["victor", "Our army is still young, and Austria is strong. What do you advise?"],
     ],
     ask: "Prussia wants Italy as an ally against Austria. What should Italy do?",
@@ -817,7 +830,7 @@ it: {
     ],
     talk: [
       ["pius", "I am Pius IX, the Pope. Rome has belonged to the Church for more than a thousand years. I will never hand it over to the King of Italy."],
-      ["victor", "The French soldiers have gone home. Nothing stands between our army and Rome… except the Pope himself. What do we do?"],
+      ["victor", "The French soldiers have gone home to fight Prussia. Nothing stands between our army and Rome… except the Pope himself. What do we do?"],
     ],
     ask: "The French have left Rome. What should Italy do?",
     options: [
@@ -830,7 +843,7 @@ it: {
     ],
     history: "On 20 September 1870 Italian troops broke through Rome's walls after a short fight. The Romans voted to join Italy, and in 1871 Rome became the capital. Pius IX refused to accept it and called himself a “prisoner in the Vatican.”",
     quote: { text: "We have made Italy. Now we must make Italians.", cite: "Massimo d'Azeglio, Italian statesman (as it is usually quoted)" },
-    journal: "“We have made Italy. Now we must make Italians.” What do you think d'Azeglio meant?",
+    journal: "Italy was now one country, but its people had lived in separate states, and most spoke local dialects instead of standard Italian. So what do you think d'Azeglio meant by “Now we must make Italians”?",
   },
   ],
 },
@@ -853,7 +866,7 @@ de: {
     ],
     talk: [
       ["list", "I am Friedrich List, an economist: I study trade and money. Let me tell you why the German states are so poor compared to Britain."],
-      ["list", "A merchant sending cloth from Hamburg to Austria must stop at border after border and pay a toll at each one. Goods cost too much, and trade crawls along."],
+      ["list", "Germany is not one country. It is 39 separate states. A merchant sending cloth from Hamburg to Austria must stop at border after border and pay a toll at each one. Goods cost too much, and trade crawls along."],
       ["list", "Prussia has an idea: a {{customs union}}, a group of states that remove the tolls between them. But who should be in it?"],
     ],
     ask: "Prussia wants to create a customs union, a free-trade zone between German states. Who should be included?",
@@ -876,7 +889,7 @@ de: {
       "In April 1849 the Frankfurt Parliament offered the crown of this new Germany to the King of Prussia, <strong>Frederick William IV</strong>.",
     ],
     talk: [
-      ["fw4", "I am Frederick William IV, King of Prussia. These men in Frankfurt want to make me Emperor of the Germans."],
+      ["fw4", "I am Frederick William IV, King of Prussia. An elected parliament in Frankfurt has written a constitution for a united Germany, and these men want to make me Emperor of the Germans."],
       ["fw4", "But who are they to give away a crown? I am king by the grace of God, not because some lawyers voted for me. And if I accept, Austria may go to war against me."],
       ["fw4", "Advise me. Should I accept their crown?"],
     ],
@@ -896,12 +909,12 @@ de: {
     pin: { at: [13.4, 52.52], kind: "city", label: "Berlin" }, focus: [[3, 46], [22.5, 55.6]], scene: "de1862",
     brief: [
       "In 1861 a new king, <strong>Wilhelm I</strong>, came to the throne of Prussia. He was a soldier, and he wanted to make the Prussian army bigger and stronger.",
-      "But Prussia now had an elected {{parliament}}, and the liberals who controlled it refused to pay for the army. Wilhelm was so frustrated that he thought about giving up his throne.",
+      "But Prussia now had an elected {{parliament}}, and the {{liberal}}s who controlled it refused to pay for the army. Wilhelm was so frustrated that he thought about giving up his throne.",
       "Instead, in September 1862 he appointed a tough, clever politician to run his government: <strong>Otto von Bismarck</strong>.",
     ],
     talk: [
-      ["wilhelm", "I am Wilhelm I, King of Prussia. Parliament will not give me the money for my army. I am thinking of giving up my crown."],
-      ["bismarck", "Your Majesty, do not give up. Leave parliament to me. I am Otto von Bismarck."],
+      ["wilhelm", "I am Wilhelm I, the new King of Prussia. I took the throne last year, after my brother died. Parliament will not give me the money for my army. I am thinking of giving up my crown."],
+      ["bismarck", "Your Majesty, do not give up. Put me in charge of your government and leave parliament to me. I am Otto von Bismarck."],
       ["bismarck", "I believe in Realpolitik: politics based on power and practical results, not on ideals. The great questions of our time will not be settled by speeches and votes. They will be settled by iron and blood."],
       ["bismarck", "Parliament refuses to pay for the army. What should I do?"],
     ],
@@ -914,9 +927,9 @@ de: {
       { t: "Call new elections and hope voters choose a friendlier parliament.", pts: 4, who: "bismarck", say: "We tried that. The voters sent back even more liberals!",
         why: "Prussia did hold elections in 1862 and 1863, but the liberals kept winning." },
     ],
-    history: "For four years Bismarck governed without a budget approved by parliament. Taxes were collected and the army was enlarged anyway. Many liberals were outraged, but they forgave him once his wars succeeded. This is an example of {{Realpolitik}}.",
+    history: "For four years Bismarck governed without a budget approved by parliament. Taxes were collected and the army was enlarged anyway. Many {{liberal}}s were outraged, but they forgave him once his wars succeeded. This is an example of {{Realpolitik}}.",
     quote: { text: "The great questions of the day will not be decided by speeches and majority votes… but by iron and blood.", cite: "Otto von Bismarck, speech to the Prussian parliament, 1862" },
-    journal: "Bismarck ignored the elected parliament to build his army. Can breaking the rules ever be justified to reach a goal? Explain.",
+    journal: "Was Bismarck right to ignore the elected parliament? Give one reason from this round.",
   },
   {
     id: "de4", yr: 1864, when: "1864", title: "The Danish War", place: "Dybbøl, Schleswig",
@@ -927,7 +940,7 @@ de: {
       "In 1863 Denmark's king tried to make Schleswig part of Denmark itself. German nationalists everywhere were furious.",
     ],
     talk: [
-      ["bismarck", "Here is our first chance. All of Germany is angry with Denmark over Schleswig and Holstein."],
+      ["bismarck", "Here is our first chance. Most people in Schleswig and Holstein speak German, but the King of Denmark rules them, and now he is trying to make Schleswig part of Denmark. All of Germany is angry."],
       ["moltke", "I am General Helmuth von Moltke, Chief of the Prussian General Staff. Our army is ready. The Danes are brave, but they are few."],
       ["bismarck", "The question is not whether to fight, but who to fight alongside. What do you advise?"],
     ],
@@ -975,7 +988,7 @@ de: {
       "On 3 July 1866, at Königgrätz in Bohemia, Prussia won a crushing victory.",
     ],
     talk: [
-      ["moltke", "Victory, Herr Minister-President! The Austrian army is broken. The road to Vienna is open."],
+      ["moltke", "Victory at Königgrätz, Herr Minister-President! Our war with Austria is only weeks old, and already the Austrian army is broken. The road to Vienna is open."],
       ["wilhelm", "Then we march on Vienna! Austria must be punished. Take its land, and parade through its capital!"],
       ["bismarck", "Your Majesty, wait. One day we will need Austria as a friend… Advisor, what kind of peace should we make?"],
     ],
@@ -999,7 +1012,7 @@ de: {
       "In 1870 France quarreled with Prussia over who would become King of Spain. At the town of Ems, the French ambassador made demands of King Wilhelm. Wilhelm politely said no, and sent Bismarck a telegram describing what had happened.",
     ],
     talk: [
-      ["bismarck", "Here is the King's telegram from Ems. It is polite. Too polite. Nothing in it will make anyone angry."],
+      ["bismarck", "France has been making demands of our King over who should rule Spain. Here is his telegram from the town of Ems, telling me how he answered the French ambassador. It is polite. Too polite. Nothing in it will make anyone angry."],
       ["bismarck", "But if I shorten it and cut out the polite parts, it will sound as if the King insulted the French ambassador and sent him away. France would be furious."],
       ["moltke", "The army is ready, if it comes to war."],
       ["bismarck", "So. What should I do with this telegram?"],
@@ -1024,7 +1037,7 @@ de: {
       "To win them over, Bismarck had to decide: force the south to join, or make deals that let them keep some special rights.",
     ],
     talk: [
-      ["wilhelm", "Bismarck, you want to make me German Emperor. But I am King of Prussia! I fear our old Prussia will disappear inside this new empire."],
+      ["wilhelm", "France is nearly beaten, and our armies surround Paris. Bismarck, you want to make me German Emperor. But I am King of Prussia! I fear our old Prussia will disappear inside this new empire."],
       ["bismarck", "Your Majesty, Prussia will lead it. But the King of Bavaria is proud too. He will not join just because we order him to."],
       ["bismarck", "How should we bring the southern states into the empire?"],
     ],
@@ -1038,7 +1051,7 @@ de: {
         why: "The war had created a wave of German national feeling. Waiting could have lost the chance." },
     ],
     history: "On 18 January 1871, in the Hall of Mirrors at the palace of Versailles, the German princes proclaimed Wilhelm I <strong>German Emperor</strong> (Kaiser). Bismarck became Chancellor. In the peace treaty, France had to pay a huge sum and give up Alsace and most of Lorraine. Proclaiming the empire in France's own palace, and taking its land, left the French bitter for decades. Many historians see this as one of the roots of World War I.",
-    journal: "The German Empire was created through three wars and proclaimed in the palace of a defeated enemy. How might that affect Germany's relationship with France in the future?",
+    journal: "Germany proclaimed its empire in France's own palace and took French land. How do you think the French felt about Germany after that, and why?",
   },
   ],
 },
@@ -1161,10 +1174,10 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const wait = ms => new Promise(r => setTimeout(r, ms));
-// {{term}} or {{term|shown words}} becomes a word with a pop-up definition
-const gl = html => html.replace(/\{\{([^}|]+)(?:\|([^}]+))?\}\}/g, (_, k, shown) => {
-  const def = GLOSS[k.toLowerCase()];
-  return def ? `<dfn tabindex="0" data-term="${esc(k.toLowerCase())}">${shown || k}</dfn>` : (shown || k);
+// {{term}} or {{term|shown words}} becomes a word with a pop-up definition; letters right after it ({{term}}s) join the word
+const gl = html => html.replace(/\{\{([^}|]+)(?:\|([^}]+))?\}\}([a-z]*)/g, (_, k, shown, tail) => {
+  const def = GLOSS[k.toLowerCase()], word = (shown || k) + tail;
+  return def ? `<dfn tabindex="0" data-term="${esc(k.toLowerCase())}">${word}</dfn>` : word;
 });
 const plain = s => s.replace(/\{\{([^}|]+)(?:\|([^}]+))?\}\}/g, (_, k, shown) => shown || k).replace(/<[^>]+>/g, "");
 
@@ -1193,7 +1206,7 @@ const LEGEND = {
        ["south", "Independent southern states"], ["duchies", "Schleswig, Holstein & Lauenburg"], ["austria", "Austrian Empire"], ["denmark", "Denmark"], ["france", "France"]],
 };
 const UNION = ["North German Confederation", "German Reich"];
-const NO_LABEL = new Set(["Cisleithania", "Kingdom of Hungary"]);
+const AUSTRIA_PARTS = new Set(["Cisleithania", "Kingdom of Hungary"]);
 const shade = (hex, k) => "#" + [1, 3, 5].map(i => Math.round(parseInt(hex.substr(i, 2), 16) * k).toString(16).padStart(2, "0")).join("");
 const CITIES = [
   ["Turin", 7.69, 45.07], ["Milan", 9.19, 45.46], ["Venice", 12.33, 45.44], ["Florence", 11.25, 43.77], ["Rome", 12.49, 41.9], ["Naples", 14.25, 40.85],
@@ -1322,9 +1335,10 @@ function sceneFeatures(name) {
   const polys = [], labels = [];
   for (const x of sc.f) {
     const F = DATA.feats[x.id], pal = PAL[x.r] || PAL.foreign, fc = pal[(x.c || 0) % pal.length];
+    if (AUSTRIA_PARTS.has(F.full)) continue;   // parts of Austria: its own shape already covers them, so no border inside it
     const u = x.r === "sardinia" || UNION.includes(F.full) ? 1 : 0;
     polys.push({ type: "Feature", properties: { fc, bc: shade(fc, x.r === "foreign" ? 0.82 : 0.68), u, lvl: x.lvl }, geometry: F.g });
-    if (!NO_LABEL.has(F.full)) labels.push({ type: "Feature", properties: { n: F.n.replace(" (Papal)", ""), a: F.a }, geometry: { type: "Point", coordinates: F.l } });
+    labels.push({ type: "Feature", properties: { n: F.n.replace(" (Papal)", ""), a: F.a }, geometry: { type: "Point", coordinates: F.l } });
   }
   return [FC(polys), FC(labels)];
 }
@@ -1408,20 +1422,21 @@ for (const ch of ALL) {
 /* ===================== Advisor pop-up ===================== */
 const adv = $("#adv"), advText = $("#adv-text"), askAgain = $("#ask-again");
 let talkQ = null;
+// the sidebar steps back: dims and says who is speaking
+function hushFor(lines) {
+  const hush = $("#hush"), who = [...new Set(lines.map(l => l[0]))].map(w => ADV[w]);
+  const names = who.length > 1 ? "Your advisors are speaking" : `${who[0].short[0].toUpperCase() + who[0].short.slice(1)} is speaking`;
+  hush.innerHTML = `<div class="hush-card"><div class="faces">${who.map(a => `<img src="${a.img}" alt="">`).join("")}</div><b>${esc(names)}</b>
+    <span class="wide"><span class="arrow">◀</span>Read the message on the map, then click <em>Next</em>.</span><span class="narrow"><span class="arrow">▼</span>Read the message at the bottom of your screen, then tap <em>Next</em>.</span></div>`;
+  hush.hidden = false;
+}
 // focus: the advisor is briefing the player, so the sidebar steps back until they finish
 function talk(lines, onDone, focus) {
   talkQ = { lines, i: 0, onDone, typing: null, focus };
   askAgain.hidden = true;
   adv.classList.remove("out"); adv.hidden = false;
   document.body.classList.add("adv-open");
-  const hush = $("#hush");
-  hush.hidden = !focus;
-  if (focus) {
-    const who = [...new Set(lines.map(l => l[0]))].map(w => ADV[w]);
-    const names = who.length > 1 ? "Your advisors are speaking" : `${who[0].short[0].toUpperCase() + who[0].short.slice(1)} is speaking`;
-    hush.innerHTML = `<div class="hush-card">${who.map(a => `<img src="${a.img}" alt="">`).join("")}<b>${esc(names)}</b>
-      <span class="wide">◀ Read the message on the map, then click <em>Next</em>.</span><span class="narrow">▼ Read the message at the bottom of your screen, then tap <em>Next</em>.</span></div>`;
-  }
+  if (focus) hushFor(lines); else $("#hush").hidden = true;
   showLine();
 }
 function showLine() {
@@ -1450,7 +1465,7 @@ function closeTalk(silent) {
   const wasFocus = talkQ && talkQ.focus;
   talkQ = null;
   document.body.classList.remove("adv-open");
-  $("#hush").hidden = true;
+  $("#hush").hidden = true; $("#hush").classList.remove("now");
   if (wasFocus && !silent) {
     // the sidebar takes over: back to its top, with a brief glow to show where to look next
     panel.scrollTop = 0;
@@ -1537,8 +1552,11 @@ async function openChapter(c, i, fromUser) {
   refreshChrome();
   renderChapter(ch);
   if (innerWidth <= 980 && fromUser) panel.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
-  if (!S.heard[ch.id]) setTimeout(() => talk(ch.talk, () => { S.heard[ch.id] = true; save(); renderChapter(ch); offerAgain(ch); }, true), reduceMotion ? 0 : 700);
-  else offerAgain(ch);
+  if (!S.heard[ch.id]) {
+    // the sidebar is already dimmed when a new round opens, before the advisor arrives
+    $("#hush").classList.add("now"); hushFor(ch.talk);
+    setTimeout(() => { if (viewing === ch) talk(ch.talk, () => { S.heard[ch.id] = true; save(); renderChapter(ch); offerAgain(ch); }, true); }, reduceMotion ? 0 : 700);
+  } else offerAgain(ch);
 }
 
 function renderChapter(ch) {
@@ -1685,7 +1703,7 @@ function campaignEnd(c) {
       <p class="turn-in">Click any chapter's marker on the map to look back at it.</p>
     </div>
     <div class="next-bar">${both
-      ? `<span class="todo">You have unified both nations!</span><button class="btn gold big" id="go">See your final results ★</button>`
+      ? `<span class="todo">You have unified both nations!</span><button class="btn gold big" id="go">${finished() ? "See your final results ★" : "On to the last challenge ★"}</button>`
       : `<span class="todo">One more nation to unify.</span><button class="btn big" id="go">${O.flag.replace('class="flag"', 'class="flag" style="width:22px;height:15px"')} Now unify ${O.name} →</button>`}</div>
   </div>`;
   panel.scrollTop = 0;
@@ -1709,18 +1727,16 @@ function medalSVG(rk, n) {
     ${stars}<g font-family="IM Fell English, Georgia, serif" text-anchor="middle"><text y="20" font-size="21" fill="rgba(255,240,190,.75)">${rk}</text><text y="19" font-size="21" fill="#5a3b06">${rk}</text>
     <text y="36" font-size="8.5" fill="#5a3b06" font-family="Nunito, sans-serif" letter-spacing="1">1834 – 1871</text></g></svg>`;
 }
+// everything that can still earn Prestige: the rank is only given once these are done
+const finished = () => finalOk() && Object.keys(S.sort).length === SORT.length;
 function finale() {
   viewing = null; closeTalk(true); askAgain.hidden = true;
   showScene("de1871"); setYear(1871); setUnity("de", "de1871");
   fly([[-2, 37], [24, 56]]);
-  const p = points(), [rk, n] = rank(p), notes = ALL.filter(ch => ch.journal && journalOk(ch)).length;
-  const hits = ALL.filter(ch => { const r = S.results[ch.id]; return r && ch.options[r.pick].best; }).length;
   panel.innerHTML = `<div class="panel-inner finale">
     <div class="ev-head"><div class="eyebrow" style="justify-content:center"><span class="chip">1834–1871 · Both nations united</span></div>
-      <h2>Well done, ${rk} ${esc(S.name || "")}!</h2><p class="place">You helped forge two new nations.</p></div>
+      <h2>One Last Challenge</h2><p class="place">Finish both tasks to earn your last Prestige and see your final rank.</p></div>
     <div class="ev-body">
-      ${medalSVG(rk, n)}
-      <div class="bigstats"><div><b>${p}</b><span>of ${maxPts} Prestige</span></div><div><b>${hits}/${ALL.length}</b><span>choices matched history</span></div><div><b>${notes}</b><span>notebook answers</span></div></div>
       <div class="legacy">
         <h3>Two roads to one nation</h3>
         <p><b>Italy</b> was united by a mix of diplomacy, foreign armies, a popular hero and the votes of ordinary people. <b>Germany</b> was united “from above” by one powerful state, Prussia, through three planned wars. In both, a strong kingdom (Sardinia, Prussia) led the way, and Austria was pushed out.</p>
@@ -1735,22 +1751,47 @@ function finale() {
           <div class="jmeta"><span id="fcount"></span><span>+10 Prestige</span></div>
         </section>
       </div>
-      <div class="row-btns" style="justify-content:center;margin-top:18px"><button class="btn gold big" id="dl">⬇ Download my notebook (PDF)</button></div>
-      <p class="turn-in">Save the file, then turn it in to your teacher.</p>
-      <div class="row-btns" style="justify-content:center"><button class="btn ghost small" data-c="it">Review Italy</button><button class="btn ghost small" data-c="de">Review Germany</button><button class="btn ghost small" id="restart">Start over</button></div>
+      <div class="row-btns" style="justify-content:center;margin-top:18px"><button class="btn ghost small" data-c="it">Review Italy</button><button class="btn ghost small" data-c="de">Review Germany</button></div>
     </div>
+    <div class="next-bar" id="nextbar"></div>
   </div>`;
   panel.scrollTop = 0;
   const ta = $("#ftext"), cnt = $("#fcount");
   const show = () => { const n = words(ta.value); cnt.innerHTML = finalOk() ? `<span class="ok">✓ ${n} words, saved</span>` : `${n} / ${JOURNAL_MIN} words`; };
-  ta.addEventListener("input", () => { const was = finalOk(); S.final = ta.value; save(); show(); if (finalOk() !== was) { refreshChrome(); if (finalOk()) bump("#stat-pts"); } });
+  ta.addEventListener("input", () => { const was = finalOk(); S.final = ta.value; save(); show(); if (finalOk() !== was) { refreshChrome(); renderFinish(); if (finalOk()) bump("#stat-pts"); } });
   show();
   renderSort();
-  $("#dl").onclick = downloadNotebook;
-  $("#restart").onclick = restart;
+  renderFinish();
   panel.querySelectorAll("[data-c]").forEach(b => b.onclick = () => campaignEnd(b.dataset.c));
   refreshChrome();
-  if (!reduceMotion) confetti(["#2f7d45", "#c8352a", "#1d1d1d", "#c39a3e", "#fbf7ee"]);
+  if (finished()) showEnding(false);
+}
+function renderFinish() {
+  const nb = $("#nextbar"); if (!nb || !$("#sort")) return;
+  const left = SORT.length - Object.keys(S.sort).length;
+  const todo = left ? `Sort ${left} more statement${left > 1 ? "s" : ""}.` : !finalOk() ? "Answer the final notebook question." : "All done!";
+  nb.innerHTML = `<span class="todo">${todo}</span><button class="btn gold big" id="go" ${finished() ? "" : "disabled"}>See your final results ★</button>`;
+  $("#go").onclick = () => showEnding(true);
+}
+// the ending opens over the whole game once there is no Prestige left to win
+function showEnding(celebrate) {
+  const p = points(), [rk, n] = rank(p), notes = ALL.filter(ch => ch.journal && journalOk(ch)).length;
+  const hits = ALL.filter(ch => { const r = S.results[ch.id]; return r && ch.options[r.pick].best; }).length;
+  $("#ending-body").innerHTML = `
+    <p class="dateline">1834–1871 · Both nations united</p>
+    <h1 id="ending-h">Well done, ${rk} ${esc(S.name || "")}!</h1>
+    <p>You helped forge two new nations.</p>
+    ${medalSVG(rk, n)}
+    <div class="bigstats"><div><b>${p}</b><span>of ${maxPts} Prestige</span></div><div><b>${hits}/${ALL.length}</b><span>choices matched history</span></div><div><b>${notes}</b><span>notebook answers</span></div></div>
+    <div class="row-btns" style="justify-content:center;margin-top:18px"><button class="btn gold big" id="dl">⬇ Download my notebook (PDF)</button></div>
+    <p class="turn-in">Save the file, then turn it in to your teacher.</p>
+    <div class="row-btns" style="justify-content:center"><button class="btn ghost small" data-c="it">Review Italy</button><button class="btn ghost small" data-c="de">Review Germany</button><button class="btn ghost small" id="restart">Start over</button></div>`;
+  const ov = $("#ending-ov");
+  ov.hidden = false; ov.scrollTop = 0;
+  $("#dl").onclick = downloadNotebook;
+  $("#restart").onclick = restart;
+  ov.querySelectorAll("[data-c]").forEach(b => b.onclick = () => { ov.hidden = true; campaignEnd(b.dataset.c); });
+  if (celebrate && !reduceMotion) confetti(["#2f7d45", "#c8352a", "#1d1d1d", "#c39a3e", "#fbf7ee"]);
 }
 function renderSort() {
   const box = $("#sort"); if (!box) return;
@@ -1761,10 +1802,12 @@ function renderSort() {
       ${ans ? `<small>${ans === q.a ? "✓ Right." : `✗ It's ${SORT_LBL[q.a]}.`} ${esc(q.why)}</small>` : ""}</div>`;
   }).join("") + `<p class="sort-score">${Object.keys(S.sort).length === SORT.length ? `You got ${sortRight()} of ${SORT.length}.` : ""}</p>`;
   box.querySelectorAll("button[data-k]").forEach(b => b.onclick = () => {
-    S.sort[b.dataset.k] = b.dataset.v; save(); renderSort(); refreshChrome();
+    S.sort[b.dataset.k] = b.dataset.v; save(); renderSort(); refreshChrome(); renderFinish();
     if (S.sort[b.dataset.k] === SORT[b.dataset.k].a) bump("#stat-pts");
   });
 }
+
+$("#ending-close").onclick = () => { $("#ending-ov").hidden = true; };
 
 /* ===================== Comparison chart ===================== */
 function methodBars(c) {
@@ -1903,7 +1946,7 @@ function showIntro() {
     r.innerHTML = `Welcome back, ${esc(S.name)}! Pick up where you left off. <button id="fresh">Start over instead</button>`;
     $("#fresh").onclick = restart;
   }
-  if (document.activeElement !== nameIn) setTimeout(() => nameIn.focus(), 300);
+  if (document.activeElement !== nameIn) setTimeout(() => nameIn.focus({ preventScroll: true }), 300);
 }
 async function start(c) {
   const n = nameIn.value.trim();
