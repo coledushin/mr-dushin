@@ -9,11 +9,11 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Caveat:wght@500;700&display=swap">
 <link rel="stylesheet" href="vendor/maplibre-gl/maplibre-gl.css">
 <script src="vendor/maplibre-gl/maplibre-gl.js" defer></script>
-<link rel="preload" href="unification-map.json?v=3" as="fetch" crossorigin>
+<link rel="preload" href="unification-map.json?v=4" as="fetch" crossorigin>
 <script>
   // borders for every year of the game load alongside the page and fill in when ready;
   // bump ?v= whenever the map file changes, so browsers don't keep an old copy
-  window.MAP_DATA = fetch("unification-map.json?v=3").then(r => r.ok ? r.json() : null).catch(() => null);
+  window.MAP_DATA = fetch("unification-map.json?v=4").then(r => r.ok ? r.json() : null).catch(() => null);
 </script>
 <style>
   :root {
@@ -85,7 +85,9 @@
   .meter i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #b88a2c, var(--gold-hi)); transition: width 1.2s cubic-bezier(.2,.8,.2,1); }
 
   /* ---------- Layout ---------- */
-  .app { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 470px; min-height: 0; }
+  .app { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 470px; grid-template-rows: minmax(0, 1fr); min-height: 0; }
+  .app > .mapwrap { grid-column: 1; grid-row: 1; }
+  .app > .panel { grid-column: 2; grid-row: 1; }
   .mapwrap { position: relative; min-height: 0; overflow: hidden; background: #c4d3cd; touch-action: none; }
   #map { position: absolute; inset: 0; background: #c4d3cd; }
   /* aged paper grain and an engraved double neatline over the map */
@@ -320,13 +322,20 @@
 
   .methods { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px !important; font-size: 13.5px !important; font-weight: 700; color: var(--muted); }
   .methods i { font-style: normal; font-size: 12.5px; color: #fff; background: var(--c); border-radius: 4px; padding: 2px 8px; }
-  .compare { margin-top: 12px; padding: 12px 16px; border-radius: 6px; background: #eef1f6; border: 1px solid #c3cbdb; border-left: 5px solid var(--blue); }
+  .compare { margin-top: 12px; padding: 12px 16px 12px 12px; border-radius: 6px; background: #eef1f6; border: 1px solid #c3cbdb; border-left: 5px solid var(--blue); display: flex; gap: 10px; align-items: flex-start; }
+  .compare > svg, .compare .pinmark { width: 26px; height: 26px; flex-shrink: 0; color: var(--blue); margin-top: 1px; }
+  .compare .pinmark { font-size: 22px; line-height: 1; text-align: center; color: #7a5310; }
+  .compare.remember { background: var(--gold-soft); border-color: #e8cf8f; border-left-color: var(--gold); }
+  .compare.remember h4 { color: #7a5310; }
+  .compare small { display: block; font-size: 13px; color: var(--muted); font-weight: 600; }
   .compare h4 { margin: 0 0 4px; font-family: var(--sc); font-weight: 400; font-size: 18px; color: var(--blue); }
   .compare p { margin: 0 0 6px; font-size: 16px; }
   .linkbtn { background: none; border: 0; padding: 0; color: var(--blue); font-weight: 800; font-size: 14.5px; text-decoration: underline; text-underline-offset: 3px; }
 
   /* comparison chart */
-  .cmp-btn { border: 1px solid var(--gold); background: rgba(195,154,62,.18); color: var(--gold-hi); border-radius: 8px; padding: 6px 12px; font-weight: 800; font-size: 14px; white-space: nowrap; }
+  .cmp-btn { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--gold); background: rgba(195,154,62,.18); color: var(--gold-hi); border-radius: 8px; padding: 5px 12px 5px 9px; font-weight: 800; font-size: 14px; white-space: nowrap; }
+  .cmp-btn .scales { width: 22px; height: 22px; }
+  .btn .scales { width: 20px; height: 20px; }
   .cmp-btn:hover { background: rgba(195,154,62,.32); color: #fff; }
   .letter.sheet { width: min(900px, 100%); }
   .letter .close { position: absolute; right: 18px; top: 16px; }
@@ -362,6 +371,27 @@
   .sort-score { font-weight: 800; text-align: center; margin: 4px 0 0; }
   .note.big-q { background: #eef1f6; border-color: #c3cbdb; border-left: 5px solid var(--blue); font-size: 15.5px; }
   .ask-again img + img { margin-left: -14px; }
+
+  /* while an advisor briefs the player, the sidebar steps back */
+  .hush {
+    grid-column: 2; grid-row: 1; z-index: 1; display: flex; justify-content: center; align-items: flex-start; padding: 90px 30px 0;
+    background: rgba(248,241,223,.78); backdrop-filter: blur(2px) grayscale(.4); animation: fadeIn .3s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; } }
+  .hush-card {
+    display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; max-width: 300px;
+    background: var(--wood); color: #f3e6c6; border: 1px solid var(--gold); border-radius: 8px; padding: 16px 20px; box-shadow: var(--shadow);
+  }
+  .hush-card img { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; object-position: 50% 25%; border: 2px solid var(--gold); filter: sepia(.35); }
+  .hush-card img + img { margin-top: -8px; }
+  .hush-card b { font-family: var(--serif); font-weight: 400; font-size: 22px; color: var(--gold-hi); }
+  .hush-card span { font-size: 15px; }
+  .hush-card em { font-style: normal; font-weight: 800; color: #fff; }
+  .hush-card .narrow { display: none; }
+  body:has(.hush:not([hidden])) .bubble { animation: glow 1.8s ease-in-out infinite; }
+  @keyframes glow { 50% { box-shadow: inset 0 0 0 3px #fbf5e4, inset 0 0 0 4px rgba(138,110,69,.5), 0 0 0 4px rgba(236,208,138,.85), 0 0 24px 6px rgba(236,208,138,.6); } }
+  .panel.wake { animation: wake 1.4s ease; }
+  @keyframes wake { 0% { box-shadow: inset 0 0 0 4px rgba(236,208,138,.95); } 100% { box-shadow: inset 1px 0 0 #6b5226; } }
 
   /* campaign choice cards */
   .choose { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0 6px; }
@@ -425,7 +455,8 @@
   @media (max-width: 1100px) { .tab .pips { display: none; } }
   @media (max-width: 980px) {
     body { overflow: auto; height: auto; }
-    .app { grid-template-columns: 1fr; }
+    .app { grid-template-columns: 1fr; grid-template-rows: auto; }
+    .app > .panel { grid-column: 1; grid-row: 2; }
     .mapwrap { height: 46vh; min-height: 280px; position: sticky; top: 0; z-index: 2; }
     .panel { border-left: 0; border-top: 3px solid var(--gold); overflow: visible; }
     .legend { display: none; }
@@ -438,6 +469,11 @@
     .bubble { min-height: 120px; padding: 10px 14px 10px 26px; }
     .bubble p { font-size: 15.5px; }
     body.adv-open .panel { padding-bottom: 230px; }
+    .hush { grid-column: 1; grid-row: 2; padding: 16px 16px 0; }
+    /* on phones the advisor box already fills the bottom of the screen: just dim the text */
+    .hush-card { display: none; }
+    .hush-card .wide { display: none; }
+    .hush-card .narrow { display: inline; }
     .ask-again { position: fixed; left: 10px; bottom: 10px; }
     .toast { top: 70px; }
   }
@@ -454,6 +490,7 @@
     .stat.year { display: none; }
     .cmp-btn { padding: 5px 9px; }
     .cmp-btn span { display: none; }
+    .cmp-btn .scales { width: 24px; height: 24px; }
     .lg-row { grid-template-columns: 1fr 1fr; }
     .lg-row h5 { grid-column: 1 / -1; }
     .lg-head > span { display: none; }
@@ -476,7 +513,7 @@
   <a class="home" href="index.html" title="Back to Mr. Dushin's Classroom">←<span> Classroom</span></a>
   <div class="brand">Forging Nations</div>
   <nav class="tabs" id="tabs" aria-label="Campaigns"></nav>
-  <button class="cmp-btn" id="cmp" title="Compare Italy and Germany">⚖<span> Compare</span></button>
+  <button class="cmp-btn" id="cmp" title="Compare Italy and Germany"><svg class="scales" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M8 20h8M4.5 7h15"/><circle cx="12" cy="4" r="1.2" fill="currentColor"/><path d="M4.5 7L2 13M4.5 7L7 13M19.5 7L17 13M19.5 7L22 13"/><path d="M1.6 13h5.8a2.9 2.9 0 0 1-5.8 0zM16.6 13h5.8a2.9 2.9 0 0 1-5.8 0z" fill="currentColor"/></svg><span>Compare</span></button>
   <div class="stats">
     <div class="stat year"><b id="yr">—</b>Year</div>
     <div class="stat" id="stat-unity"><b id="unity-n">—</b><div class="meter"><i id="unity-bar"></i></div><span id="unity-l">United</span></div>
@@ -510,6 +547,7 @@
   </section>
 
   <aside class="panel" id="panel" aria-live="polite"></aside>
+  <div class="hush" id="hush" hidden></div>
 </div>
 <div class="gtip" id="gtip" hidden></div>
 
@@ -534,7 +572,7 @@
       <div><span class="n">II.</span><b>Decide</b>Choose what to do, then see what really happened. Watch the map change.</div>
       <div><span class="n">III.</span><b>Write</b>Answer a few questions in your notebook and turn it in at the end.</div>
     </div>
-    <p class="note big-q"><b>The big question:</b> Italy and Germany both became nations around 1870, but they got there in <em>very different ways</em>. As you play, your <b>⚖ Compare</b> chart fills in. By the end, you should be able to explain how the two unifications were different, and how they were alike.</p>
+    <p class="note big-q"><b>The big question:</b> Italy and Germany both became nations around 1870, but they got there in <em>very different ways</em>. As you play, your <b>Compare</b> chart (top right) fills in. By the end, you should be able to explain how the two unifications were different, and how they were alike.</p>
     <p class="note"><b>How Prestige works:</b> you earn the most points for choices that really would have worked at the time. That is not always the same as the fairest or kindest choice. Be ready to think about that!</p>
     <div class="sign-row">
       <label for="name-in">Sign your name
@@ -619,7 +657,7 @@ it: {
       { t: "Ask Austria politely to leave Italy.", pts: 1, who: "mazzini", say: "Ha! Austria has ruled here since 1815. It will never leave just because we ask nicely.",
         why: "Austria saw northern Italy as a rich and important part of its empire. It would only leave if it was forced to." },
     ],
-    history: "The revolutions of 1848–49 all failed. Austria beat Charles Albert's army at Custoza (1848) and Novara (1849), and Charles Albert gave up the throne to his son, {{Victor Emmanuel II}}. Mazzini helped set up a Roman Republic in 1849, but French troops crushed it and brought the Pope back. One thing survived: Sardinia kept its {{constitution}}, so Italians everywhere began to see it as Italy's best hope.",
+    history: "The revolutions of 1848–49 all failed. Austria crushed Charles Albert's army, and he gave up the throne to his son, {{Victor Emmanuel II}}. One thing survived: Sardinia kept its {{constitution}}, so Italians everywhere began to see it as Italy's best hope.",
   },
   {
     id: "it2", yr: 1855, when: "1855", title: "Cavour's Gamble", place: "Turin, Kingdom of Sardinia",
@@ -643,13 +681,13 @@ it: {
       { t: "Join Russia's side against Britain and France.", pts: 0, who: "cavour", say: "Fight against France? Then who will help us against Austria?",
         why: "This would have turned Sardinia's only possible allies into enemies." },
     ],
-    history: "Sardinia sent about 18,000 soldiers to the Crimea. More than 2,000 died, most of them from disease. Britain, France and their allies won. At the peace conference in Paris in 1856, Cavour got the chance to speak about the “Italian question” and to complain about Austria's rule in Italy. Most important of all, he won the friendship of Napoleon III.",
+    history: "Sardinia sent about 18,000 soldiers to the Crimea, and Britain, France and their allies won. At the peace conference in Paris in 1856, Cavour got the chance to speak about the “Italian question” and to complain about Austria's rule in Italy. Most important of all, he won the friendship of Napoleon III.",
   },
   {
     id: "it3", yr: 1858, when: "July 1858", title: "A Secret Meeting", place: "Plombières, France",
     pin: { at: [6.46, 47.96], kind: "treaty", label: "Plombières" }, focus: [[1.5, 42.3], [15, 49.6]], scene: "it1848",
     brief: [
-      "Napoleon III, Emperor of the French, wanted to weaken Austria and make France the leading power in Europe. He also had a soft spot for Italy: as a young man he had joined Italian rebels.",
+      "Napoleon III, Emperor of the French, wanted to weaken Austria and make France the leading power in Europe.",
       "In July 1858 Cavour secretly traveled to the French spa town of Plombières to meet him. No one was supposed to know.",
       "Napoleon III made an offer: France would help Sardinia fight Austria, but only if Austria started the war. And France wanted a reward.",
     ],
@@ -674,7 +712,7 @@ it: {
     pin: { at: [10.57, 45.37], kind: "battle", label: "Solferino" }, focus: [[5.8, 41.6], [14.6, 47]], scene: "it1848", after: ["it1859", "it1860a"],
     changes: ["Lombardy joins Sardinia", "Central Italy votes to join · Nice and Savoy go to France"],
     brief: [
-      "French and Sardinian armies beat the Austrians at <strong>Magenta</strong> and then at <strong>Solferino</strong> in June 1859. Solferino was so bloody that a Swiss businessman who saw the wounded, Henri Dunant, later founded the Red Cross.",
+      "French and Sardinian armies beat the Austrians at <strong>Magenta</strong> and <strong>Solferino</strong> in June 1859.",
       "Then Napoleon III surprised everyone. Without asking Cavour, he made peace with Austria at Villafranca. Sardinia would get Lombardy, but Austria would keep Venetia. Cavour was so angry that he resigned.",
       "Meanwhile, the people of Tuscany, Parma, Modena and the Romagna (the northern part of the Papal States) drove out their rulers. They wanted to join Sardinia.",
     ],
@@ -692,7 +730,7 @@ it: {
       { t: "Give the duchies back to their old rulers, as the peace treaty says.", pts: 1, who: "victor", say: "After the people threw them out? They would only rebel again.",
         why: "The old rulers had no support at home and could only have returned with Austrian soldiers." },
     ],
-    history: "In March 1860 central Italy held {{plebiscite}}s, and huge majorities voted to join Sardinia (historians think the voting was not always fair or secret). Napoleon III agreed, but only after Cavour paid the price promised at Plombières: Nice and Savoy were handed to France. Garibaldi, born in Nice, never forgave Cavour. Look at the map: Sardinia has more than doubled in size.",
+    history: "In March 1860 central Italy held {{plebiscite}}s, and huge majorities voted to join Sardinia (historians think the voting was not always fair or secret). Napoleon III agreed, but only after Cavour paid the price promised at Plombières: Nice and Savoy were handed to France. Look at the map: Sardinia has more than doubled in size.",
     journal: "Was a plebiscite (a vote) a fair way to decide whether central Italy should join Sardinia? Explain why or why not.",
   },
   {
@@ -700,7 +738,7 @@ it: {
     pin: { at: [12.44, 37.8], kind: "battle", label: "Marsala" }, focus: [[10, 36.4], [17.6, 42.6]], scene: "it1860a", after: ["it1860b"],
     changes: ["Garibaldi's Redshirts conquer Sicily and Naples"],
     brief: [
-      "<strong>Giuseppe Garibaldi</strong> was the most famous soldier in Italy. He had fought for freedom in South America and defended Mazzini's Roman Republic in 1849. His volunteers wore red shirts, so they were called the <strong>Redshirts</strong>.",
+      "<strong>Giuseppe Garibaldi</strong> was the most famous soldier in Italy. His volunteers wore red shirts, so they were called the <strong>Redshirts</strong>.",
       "In April 1860 the people of Sicily rebelled against their king, Francis II of the Two Sicilies. Garibaldi wanted to sail south with about a thousand volunteers and help them.",
       "This put Cavour in a tricky spot. Openly attacking the Two Sicilies would anger the great powers. But if Garibaldi won, Italy would be almost complete.",
     ],
@@ -718,7 +756,7 @@ it: {
       { t: "Send the whole Sardinian army with him.", pts: 2, who: "cavour", say: "And start a war against the Two Sicilies that all of Europe would condemn? No.",
         why: "An open invasion could have brought other great powers into the war against Sardinia." },
     ],
-    history: "Garibaldi's Thousand landed at Marsala in May 1860. Thousands of Sicilians joined them, and they won at Calatafimi and took Palermo. In August they crossed to the mainland, and the king's army fell apart. On 7 September 1860 Garibaldi rode into Naples in triumph and ruled the south as {{dictator}}. Look at the map: the red area is Garibaldi's.",
+    history: "Garibaldi's Thousand landed at Marsala in May 1860. Thousands of Sicilians joined them, and they won battle after battle. In August they crossed to the mainland, and the king's army fell apart. On 7 September 1860 Garibaldi rode into Naples in triumph and ruled the south as {{dictator}}. Look at the map: the red area is Garibaldi's.",
   },
   {
     id: "it6", yr: 1861, when: "October 1860 – March 1861", title: "The Handshake at Teano", place: "Teano, near Naples",
@@ -743,7 +781,7 @@ it: {
       { t: "March on Rome right away, French soldiers or not.", pts: 2, who: "victor", say: "And bring the French army down on all of us? Everything we have won would be lost.",
         why: "France protected the Pope. Attacking Rome in 1860 would probably have meant war with France." },
     ],
-    history: "On 26 October 1860 Garibaldi met Victor Emmanuel at Teano and greeted him as “King of Italy.” Plebiscites in the south approved joining. Garibaldi refused every reward and went home to his small farm on the island of Caprera. On 17 March 1861 the <strong>Kingdom of Italy</strong> was proclaimed, with Victor Emmanuel II as its king. Cavour died just three months later. Still missing: Venetia and Rome.",
+    history: "On 26 October 1860 Garibaldi met Victor Emmanuel at Teano and greeted him as “King of Italy.” Plebiscites in the south approved joining. Garibaldi refused every reward and went home to his farm. On 17 March 1861 the <strong>Kingdom of Italy</strong> was proclaimed, with Victor Emmanuel II as its king. Still missing: Venetia and Rome.",
     journal: "Garibaldi gave away the land he had conquered. Why do you think he did it? Would you have done the same?",
   },
   {
@@ -767,7 +805,7 @@ it: {
       { t: "Ally with Austria against Prussia.", pts: 1, who: "victor", say: "Help the empire that has ruled our people for fifty years? Never!",
         why: "Austria was the main enemy of Italian unity." },
     ],
-    history: "Italy joined the war in June 1866, but its army lost at Custoza and its navy lost at Lissa. Luckily for Italy, Prussia crushed Austria at Königgrätz. Austria handed Venetia to Napoleon III, who passed it on to Italy, and a plebiscite approved joining. Italy won Venetia even though it lost its own battles: Prussia's victory was what mattered. (You will see this same war from Bismarck's side in the Germany campaign.)",
+    history: "Italy joined the war in June 1866 but lost its own battles on land and at sea. Luckily for Italy, Prussia crushed Austria. Austria gave up Venetia, and a plebiscite there approved joining Italy. Italy won Venetia even though it lost its own battles: Prussia's victory was what mattered. (You will see this same war from Bismarck's side in the Germany campaign.)",
   },
   {
     id: "it8", yr: 1870, when: "September 1870", title: "Rome, the Capital", place: "Rome",
@@ -790,7 +828,7 @@ it: {
       { t: "Leave Rome to the Pope forever and keep Florence as the capital.", pts: 2, who: "victor", say: "Italy without Rome? The people would never accept it.",
         why: "For most Italians, Italy without Rome was not truly Italy." },
     ],
-    history: "On 20 September 1870 Italian troops blasted a hole in Rome's walls near the Porta Pia and marched in after a short fight. The Romans voted to join Italy, and in 1871 Rome became the capital. Pius IX refused to accept it and called himself a “prisoner in the Vatican.” The quarrel between Italy and the Popes lasted until 1929, when Vatican City became its own tiny country.",
+    history: "On 20 September 1870 Italian troops broke through Rome's walls after a short fight. The Romans voted to join Italy, and in 1871 Rome became the capital. Pius IX refused to accept it and called himself a “prisoner in the Vatican.”",
     quote: { text: "We have made Italy. Now we must make Italians.", cite: "Massimo d'Azeglio, Italian statesman (as it is usually quoted)" },
     journal: "“We have made Italy. Now we must make Italians.” What do you think d'Azeglio meant?",
   },
@@ -851,7 +889,7 @@ de: {
       { t: "Ignore the offer and say nothing.", pts: 2, who: "fw4", say: "Silence would look weak. I must give an answer.",
         why: "Saying nothing would have made Prussia look weak to both the revolutionaries and the other kings." },
     ],
-    history: "Frederick William IV refused. In private he called it a “crown from the gutter,” because it was offered by elected commoners rather than by his fellow princes. The Frankfurt Parliament fell apart, and Prussian troops crushed the last revolutionaries in Baden in 1849. The lesson many Germans took away: speeches and votes alone would not unite Germany. Power would.",
+    history: "Frederick William IV refused. In private he called it a “crown from the gutter,” because it was offered by elected commoners rather than by his fellow princes. The Frankfurt Parliament fell apart. The lesson many Germans took away: speeches and votes alone would not unite Germany. Power would.",
   },
   {
     id: "de3", yr: 1862, when: "September 1862", title: "Blood and Iron", place: "Berlin",
@@ -885,8 +923,8 @@ de: {
     pin: { at: [9.74, 54.91], kind: "battle", label: "Dybbøl" }, focus: [[6.3, 52.2], [14.8, 57.7]], scene: "de1862", after: ["de1864"],
     changes: ["Denmark loses Schleswig, Holstein and Lauenburg"],
     brief: [
-      "North of the German states lay two duchies, <strong>Schleswig</strong> and <strong>Holstein</strong>. The King of Denmark ruled them, but most of their people spoke German, and Holstein was even a member of the German Confederation.",
-      "In 1863 Denmark's new king, Christian IX, signed a constitution that tied Schleswig closely to Denmark. German nationalists everywhere were furious.",
+      "North of the German states lay two duchies, <strong>Schleswig</strong> and <strong>Holstein</strong>. The King of Denmark ruled them, but most of their people spoke German.",
+      "In 1863 Denmark's king tried to make Schleswig part of Denmark itself. German nationalists everywhere were furious.",
     ],
     talk: [
       ["bismarck", "Here is our first chance. All of Germany is angry with Denmark over Schleswig and Holstein."],
@@ -902,7 +940,7 @@ de: {
       { t: "Stay out of it. It's a problem for Denmark and the duchies.", pts: 1, who: "bismarck", say: "And let Austria be the hero of Germany? Never.",
         why: "Germans everywhere wanted action. Doing nothing would have made Prussia look weak." },
     ],
-    history: "Prussia and Austria invaded together in February 1864. The Prussians stormed the Danish forts at Dybbøl in April, and Denmark gave up the duchies in October. In 1865 the winners split the job: Prussia ran Schleswig and Austria ran Holstein. Sharing two small duchies so far from Austria led to constant quarrels, which is exactly what Bismarck wanted.",
+    history: "Prussia and Austria invaded together in 1864. The Prussians stormed the Danish forts at Dybbøl, and Denmark gave up the duchies. The winners split them: Prussia ran Schleswig and Austria ran Holstein. Sharing two small duchies so far from Austria led to constant quarrels, which is exactly what Bismarck wanted.",
   },
   {
     id: "de5", yr: 1866, when: "1865–1866", title: "Making Friends Before War", place: "Biarritz, France",
@@ -913,7 +951,7 @@ de: {
     ],
     talk: [
       ["bismarck", "Austria is still the leading power in the German Confederation. As long as that is true, Germany cannot be united under Prussia."],
-      ["bismarck", "Before I start a war, I must make sure Austria fights alone. Russia is already friendly: we helped the Tsar when the Poles rebelled in 1863. Britain rarely fights on the continent."],
+      ["bismarck", "Before I start a war, I must make sure Austria fights alone. Russia is already friendly, and Britain rarely fights on the continent."],
       ["bismarck", "That leaves France, and one more possible friend in the south. How should I prepare?"],
     ],
     ask: "How should Bismarck prepare for a war against Austria?",
@@ -925,7 +963,7 @@ de: {
       { t: "Prussia needs no help. Attack Austria right away.", pts: 2, who: "bismarck", say: "And if France attacks us from behind? No. First we prepare the ground.",
         why: "Without preparation, Prussia might have had to fight France and Austria at the same time." },
     ],
-    history: "In October 1865 Bismarck met Napoleon III at the seaside resort of Biarritz and dropped hints that France might gain some land if it stayed out of a war, but he never put a promise in writing. In April 1866 Prussia signed a secret alliance with Italy: if war came, Italy would attack Austria and get Venetia. Then Bismarck picked a quarrel with Austria over Holstein.",
+    history: "In 1865 Bismarck met Napoleon III at Biarritz and hinted that France might gain some land if it stayed out of a war, but he never put a promise in writing. In April 1866 Prussia signed a secret alliance with Italy: if war came, Italy would attack Austria and get Venetia. Then Bismarck picked a quarrel with Austria over Holstein.",
   },
   {
     id: "de6", yr: 1867, when: "Summer 1866", title: "The Seven Weeks' War", place: "Königgrätz, Bohemia",
@@ -933,8 +971,8 @@ de: {
     changes: ["Prussia annexes Hanover, Hesse-Kassel, Nassau, Frankfurt and Schleswig-Holstein", "The North German Confederation is formed"],
     brief: [
       "In June 1866 war broke out. Most of the medium-sized German states, including Bavaria, Saxony and Hanover, sided with Austria.",
-      "Moltke used railways to rush Prussian troops to the front. Prussian soldiers also had the <strong>needle gun</strong>, a new rifle that loaded from the back, so they could fire lying down, and much faster than the Austrians.",
-      "On 3 July 1866, at Königgrätz in Bohemia, about 400,000 soldiers fought one of the largest battles of the century. Prussia won a crushing victory.",
+      "Moltke used railways to rush Prussian troops to the front, and Prussian soldiers had a new rifle that fired much faster than the Austrians' rifles.",
+      "On 3 July 1866, at Königgrätz in Bohemia, Prussia won a crushing victory.",
     ],
     talk: [
       ["moltke", "Victory, Herr Minister-President! The Austrian army is broken. The road to Vienna is open."],
@@ -958,8 +996,7 @@ de: {
     pin: { at: [7.72, 50.33], kind: "treaty", label: "Ems" }, focus: [[-2, 45], [16.5, 55.2]], scene: "de1867",
     brief: [
       "The four southern German states were still independent, and many of their people, mostly Catholic, did not trust Protestant Prussia. Bismarck believed only a war against a common enemy would bring them in. That enemy was <strong>France</strong>.",
-      "In 1870 Spain offered its empty throne to Prince Leopold, a relative of King Wilhelm. France was alarmed, and the prince withdrew.",
-      "But France wanted more. At the spa town of Ems, the French ambassador asked Wilhelm to promise that no relative of his would ever take the Spanish throne. Wilhelm politely said no, and sent Bismarck a telegram describing what had happened.",
+      "In 1870 France quarreled with Prussia over who would become King of Spain. At the town of Ems, the French ambassador made demands of King Wilhelm. Wilhelm politely said no, and sent Bismarck a telegram describing what had happened.",
     ],
     talk: [
       ["bismarck", "Here is the King's telegram from Ems. It is polite. Too polite. Nothing in it will make anyone angry."],
@@ -1000,7 +1037,7 @@ de: {
       { t: "Let the southern states stay independent.", pts: 1, who: "bismarck", say: "After they fought beside us against France? The moment is now, or never.",
         why: "The war had created a wave of German national feeling. Waiting could have lost the chance." },
     ],
-    history: "On 18 January 1871, in the Hall of Mirrors at the palace of Versailles, the German princes proclaimed Wilhelm I <strong>German Emperor</strong> (Kaiser). Bismarck became Chancellor. In the Treaty of Frankfurt (May 1871), France had to pay 5 billion francs and give up Alsace and most of Lorraine. Proclaiming the empire in France's own palace, and taking its land, left the French bitter for decades. Many historians see this as one of the roots of World War I.",
+    history: "On 18 January 1871, in the Hall of Mirrors at the palace of Versailles, the German princes proclaimed Wilhelm I <strong>German Emperor</strong> (Kaiser). Bismarck became Chancellor. In the peace treaty, France had to pay a huge sum and give up Alsace and most of Lorraine. Proclaiming the empire in France's own palace, and taking its land, left the French bitter for decades. Many historians see this as one of the roots of World War I.",
     journal: "The German Empire was created through three wars and proclaimed in the palace of a defeated enemy. How might that affect Germany's relationship with France in the future?",
   },
   ],
@@ -1030,7 +1067,27 @@ const META = {
   de7: { tags: ["diplomacy"], compare: "Cavour used a similar trick in 1859 when he got Austria to declare war first. Both leaders wanted the other side to look like the attacker." },
   de8: { tags: ["army", "diplomacy"], compare: "Italy became a kingdom, with Rome as its capital, partly through votes. Germany became an empire, proclaimed by princes and generals in an enemy's palace." },
 };
-const ALL = ORDER.flatMap(c => CAMPAIGNS[c].chapters.map((ch, i) => Object.assign(ch, { c, i }, META[ch.id])));
+// before students have played the other country there is nothing to compare with yet,
+// so the first time through each chapter points out one thing to remember instead
+const NOTICE = {
+  it1: "Italy's first try came from ordinary people rising up, and it failed. Watch who takes the lead after this.",
+  it2: "Cavour knows Sardinia is too small to beat Austria alone, so he goes looking for powerful friends.",
+  it3: "Sardinia is paying a foreign country, France, to fight on its side. Remember that Italy needed outside help.",
+  it4: "Here ordinary people decided by voting in plebiscites. Remember that the people had a say in Italy.",
+  it5: "A volunteer hero, not a government, conquered the south. Ordinary people played a big part in uniting Italy.",
+  it6: "The popular hero handed his conquests to the king, so Italy became a kingdom, not a republic.",
+  it7: "Italy lost its own battles but still won Venetia, because its ally won. Outside help, again.",
+  it8: "Italy got Rome only because France was busy fighting Prussia. Notice how much Italy's success depended on other countries' wars.",
+  de1: "Before any war, trade tied the German states to Prussia. Remember the Zollverein when you think about how Germany was united.",
+  de2: "Germany's first try came from elected representatives, and it failed. Watch who takes the lead after this.",
+  de3: "Bismarck ignored the elected parliament to build up the army. Remember: power, not votes.",
+  de4: "Prussia's own army won this war. Watch how often Prussia's army does the work.",
+  de5: "Bismarck didn't ask other countries to fight for Prussia. He only made sure they stayed out.",
+  de6: "Prussia beat Austria, a great power, by itself in just seven weeks.",
+  de7: "Bismarck tricked France into starting the war, so that the southern German states would join Prussia.",
+  de8: "Germany was declared an empire by princes and generals. The people never voted on it.",
+};
+const ALL = ORDER.flatMap(c => CAMPAIGNS[c].chapters.map((ch, i) => Object.assign(ch, { c, i, notice: NOTICE[ch.id] }, META[ch.id])));
 const BY_ID = Object.fromEntries(ALL.map(ch => [ch.id, ch]));
 // the comparison chart: each cell fills in once the chapter named beside it has been played
 const LEDGER = [
@@ -1078,6 +1135,7 @@ const ICON = {
   treaty: '<svg viewBox="0 0 24 24" fill="none" stroke="#3b2e22" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M9 10h7M9 14h7M9 18h4"/></svg>',
   city: '<svg viewBox="0 0 24 24" fill="#3b2e22"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21l1.6-7L2 9.2l7.1-.6z"/></svg>',
   scroll: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h11a2 2 0 0 1 0 4h-1v10a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-1h11v1a2 2 0 0 0 2 2"/><path d="M8 4a2 2 0 0 0-2 2v11"/></svg>',
+  scales: '<svg class="scales" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M8 20h8M4.5 7h15"/><circle cx="12" cy="4" r="1.2" fill="currentColor"/><path d="M4.5 7L2 13M4.5 7L7 13M19.5 7L17 13M19.5 7L22 13"/><path d="M1.6 13h5.8a2.9 2.9 0 0 1-5.8 0zM16.6 13h5.8a2.9 2.9 0 0 1-5.8 0z" fill="currentColor"/></svg>',
   pen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 11-11-3-3L5 16z"/></svg>',
 };
 
@@ -1150,7 +1208,7 @@ const pt = (name, lon, lat) => ({ type: "Feature", properties: { name }, geometr
 const FC = features => ({ type: "FeatureCollection", features });
 const EMPTY = FC([]);
 const BOUNDS_ALL = [[-6, 35], [30, 58.5]];
-const SLOT_PAINT = { fill: ["fill-opacity", 0.8], band: ["line-opacity", 0.45], edge: ["line-opacity", 0.75], uni: ["line-opacity", 0.95], lab: ["text-opacity", 1] };
+const SLOT_PAINT = { fill: ["fill-opacity", 0.8], band: ["line-opacity", 0.35], edge: ["line-opacity", 0.7], uni: ["line-opacity", 0.95], lab: ["text-opacity", 1] };
 const FADE = { duration: 1100, delay: 0 };
 
 function makeStyle() {
@@ -1161,12 +1219,12 @@ function makeStyle() {
     // the darker tint brushed along the inside of every border, like a hand-coloured atlas
     { id: "band-" + X, type: "line", source: "s" + X, layout: { "line-join": "round" }, paint: {
       "line-color": ["get", "bc"], "line-opacity": 0, "line-opacity-transition": FADE, "line-blur": 1,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 3, 1.5, 7, 4] } },
+      "line-width": ["interpolate", ["linear"], ["zoom"], 3, 1, 7, 2.6] } },
     { id: "edge-" + X, type: "line", source: "s" + X, layout: { "line-join": "round" }, paint: {
       "line-color": "#4e3c28", "line-opacity": 0, "line-opacity-transition": FADE,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 3, ["match", ["get", "lvl"], 2, 0.7, 0.4], 7, ["match", ["get", "lvl"], 2, 1.6, 0.9]] } },
+      "line-width": ["interpolate", ["linear"], ["zoom"], 3, ["match", ["get", "lvl"], 2, 0.45, 0.3], 7, ["match", ["get", "lvl"], 2, 1, 0.6]] } },
     { id: "uni-" + X, type: "line", source: "s" + X, filter: ["==", ["get", "u"], 1], layout: { "line-join": "round", "line-cap": "round" }, paint: {
-      "line-color": "#a3271c", "line-opacity": 0, "line-opacity-transition": FADE, "line-width": ["interpolate", ["linear"], ["zoom"], 3, 1.6, 7, 3.4] } },
+      "line-color": "#a3271c", "line-opacity": 0, "line-opacity-transition": FADE, "line-width": ["interpolate", ["linear"], ["zoom"], 3, 1.1, 7, 2.4] } },
   ];
   const slotLabels = X => ({ id: "lab-" + X, type: "symbol", source: "l" + X, layout: {
       "text-field": ["get", "n"], "text-font": ["OpenHistorical Bold"], "text-transform": ["case", [">", ["get", "a"], 2.5], "uppercase", "none"],
@@ -1350,11 +1408,20 @@ for (const ch of ALL) {
 /* ===================== Advisor pop-up ===================== */
 const adv = $("#adv"), advText = $("#adv-text"), askAgain = $("#ask-again");
 let talkQ = null;
-function talk(lines, onDone) {
-  talkQ = { lines, i: 0, onDone, typing: null };
+// focus: the advisor is briefing the player, so the sidebar steps back until they finish
+function talk(lines, onDone, focus) {
+  talkQ = { lines, i: 0, onDone, typing: null, focus };
   askAgain.hidden = true;
   adv.classList.remove("out"); adv.hidden = false;
   document.body.classList.add("adv-open");
+  const hush = $("#hush");
+  hush.hidden = !focus;
+  if (focus) {
+    const who = [...new Set(lines.map(l => l[0]))].map(w => ADV[w]);
+    const names = who.length > 1 ? "Your advisors are speaking" : `${who[0].short[0].toUpperCase() + who[0].short.slice(1)} is speaking`;
+    hush.innerHTML = `<div class="hush-card">${who.map(a => `<img src="${a.img}" alt="">`).join("")}<b>${esc(names)}</b>
+      <span class="wide">◀ Read the message on the map, then click <em>Next</em>.</span><span class="narrow">▼ Read the message at the bottom of your screen, then tap <em>Next</em>.</span></div>`;
+  }
   showLine();
 }
 function showLine() {
@@ -1380,8 +1447,16 @@ $("#adv-next").onclick = () => {
 };
 function closeTalk(silent) {
   if (!talkQ && adv.hidden) return;
+  const wasFocus = talkQ && talkQ.focus;
   talkQ = null;
   document.body.classList.remove("adv-open");
+  $("#hush").hidden = true;
+  if (wasFocus && !silent) {
+    // the sidebar takes over: back to its top, with a brief glow to show where to look next
+    panel.scrollTop = 0;
+    if (innerWidth <= 980) panel.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+    panel.classList.remove("wake"); void panel.offsetWidth; panel.classList.add("wake");
+  }
   if (silent || reduceMotion) { adv.hidden = true; return; }
   adv.classList.add("out");
   setTimeout(() => { if (!talkQ) adv.hidden = true; }, 300);
@@ -1390,7 +1465,7 @@ function offerAgain(ch) {
   const who = [...new Set(ch.talk.map(l => l[0]))];
   askAgain.innerHTML = who.map(w => `<img src="${ADV[w].img}" alt="">`).join("") + (who.length > 1 ? "Hear advisors again" : `Hear ${esc(ADV[who[0]].short)} again`);
   askAgain.hidden = false;
-  askAgain.onclick = () => talk(ch.talk, () => offerAgain(ch));
+  askAgain.onclick = () => talk(ch.talk, () => offerAgain(ch), true);
 }
 
 /* ===================== Glossary pop-ups ===================== */
@@ -1462,7 +1537,7 @@ async function openChapter(c, i, fromUser) {
   refreshChrome();
   renderChapter(ch);
   if (innerWidth <= 980 && fromUser) panel.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
-  if (!S.heard[ch.id]) setTimeout(() => talk(ch.talk, () => { S.heard[ch.id] = true; save(); renderChapter(ch); offerAgain(ch); }), reduceMotion ? 0 : 700);
+  if (!S.heard[ch.id]) setTimeout(() => talk(ch.talk, () => { S.heard[ch.id] = true; save(); renderChapter(ch); offerAgain(ch); }, true), reduceMotion ? 0 : 700);
   else offerAgain(ch);
 }
 
@@ -1494,8 +1569,7 @@ function renderChapter(ch) {
           <div class="opts ${heard ? "" : "wait"}">${opts}</div>
           ${res ? `<div class="history"><h4>What really happened</h4><p>${gl(ch.history)}</p>
             <p class="methods"><span>How this moved unification:</span>${ch.tags.map(m => `<i style="--c:${METHODS[m][1]}">${METHODS[m][0]}</i>`).join("")}</p></div>
-            <div class="compare"><h4>⚖ Compare with ${ch.c === "it" ? "Germany" : "Italy"}</h4><p>${gl(ch.compare)}</p>
-            <button class="linkbtn" data-cmp>Open your comparison chart →</button></div>` : ""}
+            ${compareHTML(ch)}` : ""}
           ${res && ch.quote ? `<blockquote>${esc(ch.quote.text)}<cite>— ${esc(ch.quote.cite)}</cite></blockquote>` : ""}
         </div>
       </section>
@@ -1529,6 +1603,16 @@ async function decide(ch, k) {
     }
     busy = false;
   }
+}
+
+function compareHTML(ch) {
+  const other = CAMPAIGNS[ch.c === "it" ? "de" : "it"];
+  // compare only once the other country has been played; until then, one thing to remember
+  return S.done[ch.c === "it" ? "de" : "it"]
+    ? `<div class="compare">${ICON.scales}<div><h4>Compare with ${other.name}</h4><p>${gl(ch.compare)}</p>
+        <button class="linkbtn" data-cmp>Open your comparison chart →</button></div></div>`
+    : `<div class="compare remember"><span class="pinmark" aria-hidden="true">✎</span><div><h4>Keep in mind</h4><p>${gl(ch.notice)}</p>
+        <small>After you play ${other.name}, this box will compare the two countries.</small></div></div>`;
 }
 
 function journalHTML(ch) {
@@ -1595,7 +1679,7 @@ function campaignEnd(c) {
       <h2>${c === "it" ? "Italy Is United!" : "The German Empire Is Born!"}</h2><p class="place">${esc(C.name)} earned you ${pts} of ${max} Prestige</p></div>
     <div class="ev-body legacy">
       ${C.legacy.map(p => `<p>${gl(p)}</p>`).join("")}
-      <div class="row-btns"><button class="btn ghost" data-cmp>⚖ Open the comparison chart</button></div>
+      <div class="row-btns"><button class="btn ghost" data-cmp>${ICON.scales}Open the comparison chart</button></div>
       <h3>Your decisions</h3>
       ${recapHTML(c)}
       <p class="turn-in">Click any chapter's marker on the map to look back at it.</p>
