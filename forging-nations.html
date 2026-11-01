@@ -1,0 +1,1647 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Forging Nations</title>
+<link rel="icon" href="icons/crown.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Caveat:wght@500;700&display=swap">
+<link rel="stylesheet" href="vendor/maplibre-gl/maplibre-gl.css">
+<script src="vendor/maplibre-gl/maplibre-gl.js" defer></script>
+<link rel="preload" href="unification-map.json" as="fetch" crossorigin>
+<script>
+  // borders for every year of the game load alongside the page and fill in when ready
+  window.MAP_DATA = fetch("unification-map.json").then(r => r.ok ? r.json() : null).catch(() => null);
+</script>
+<style>
+  :root {
+    --paper: #efe4c8;
+    --paper-2: #f8f1df;
+    --card: #fffaf0;
+    --ink: #2a2118;
+    --muted: #6e5f4c;
+    --line: #dccba6;
+    --gold: #c39a3e;
+    --gold-hi: #ecd08a;
+    --gold-soft: #f8ecc9;
+    --wood: #221a13;
+    --wood-2: #3a2c1f;
+    --red: #9e2a1e;
+    --red-soft: #f6dfd8;
+    --green: #3d6b45;
+    --green-soft: #e1ecdc;
+    --blue: #3f5f8f;
+    --shadow: 0 1px 2px rgba(60,40,10,.10), 0 8px 24px rgba(60,40,10,.14);
+    --serif: "IM Fell English", Georgia, serif;
+    --sc: "IM Fell English SC", "IM Fell English", Georgia, serif;
+    --hand: "Caveat", "Segoe Print", cursive;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font: 17px/1.55 "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  button:focus-visible, [tabindex]:focus-visible, input:focus-visible, textarea:focus-visible, dfn:focus-visible {
+    outline: 3px solid var(--gold); outline-offset: 2px;
+  }
+  [hidden] { display: none !important; }
+
+  /* ---------- Top bar: dark wood with a gilt edge ---------- */
+  .topbar {
+    display: flex; align-items: center; gap: 14px; padding: 8px 16px; flex-shrink: 0;
+    background: linear-gradient(#33271c, #1f1812); color: #f3e6c6;
+    border-bottom: 3px solid var(--gold); box-shadow: inset 0 -5px 0 -3px #6b5226, 0 2px 8px rgba(0,0,0,.25); position: relative; z-index: 5;
+  }
+  .topbar a.home { color: #e5d3a8; text-decoration: none; font-weight: 700; font-size: 15px; white-space: nowrap; }
+  .topbar a.home:hover { color: #fff; }
+  .brand { font-family: var(--sc); font-size: 23px; letter-spacing: .02em; white-space: nowrap; color: var(--gold-hi); text-shadow: 0 1px 0 #000; }
+  .tabs { display: flex; gap: 6px; flex: 1; justify-content: center; min-width: 0; }
+  .tab {
+    display: flex; align-items: center; gap: 8px; padding: 5px 12px 5px 8px; border-radius: 8px;
+    border: 1px solid #5b4630; background: rgba(255,255,255,.05); color: #e9dab6; font-weight: 700; font-size: 14px; white-space: nowrap;
+  }
+  .tab:hover { background: rgba(255,255,255,.1); }
+  .tab[aria-pressed="true"] { border-color: var(--gold); background: rgba(195,154,62,.18); color: #fff; }
+  .tab .flag { width: 24px; height: 16px; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0,0,0,.5); flex-shrink: 0; }
+  .tab .pips { display: flex; gap: 3px; }
+  .tab .pips i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.18); }
+  .tab .pips i.done { background: var(--gold-hi); }
+  .tab .pips i.now { background: #fff; box-shadow: 0 0 0 2px rgba(236,208,138,.5); }
+  .stats { display: flex; gap: 8px; align-items: stretch; }
+  .stat {
+    background: rgba(0,0,0,.25); border: 1px solid #5b4630; border-radius: 8px; padding: 2px 10px;
+    font-size: 12px; line-height: 1.25; text-align: center; white-space: nowrap; color: #d8c69c;
+  }
+  .stat b { display: block; font-size: 17px; color: #fff; font-family: var(--serif); font-weight: 400; }
+  .stat.bump b { animation: bump .6s ease; }
+  @keyframes bump { 30% { transform: scale(1.35); color: var(--gold-hi); } }
+  .meter { width: 110px; height: 8px; border-radius: 99px; background: rgba(255,255,255,.12); margin: 5px auto 2px; overflow: hidden; }
+  .meter i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #b88a2c, var(--gold-hi)); transition: width 1.2s cubic-bezier(.2,.8,.2,1); }
+
+  /* ---------- Layout ---------- */
+  .app { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 470px; min-height: 0; }
+  .mapwrap { position: relative; min-height: 0; overflow: hidden; background: #c4d3cd; touch-action: none; }
+  #map { position: absolute; inset: 0; background: #c4d3cd; }
+  /* aged paper grain and an engraved double neatline over the map */
+  .mapwrap::before {
+    content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; mix-blend-mode: multiply; opacity: .5;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .45 0 0 0 0 .3 0 0 0 .35 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .mapwrap::after {
+    content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none;
+    box-shadow: inset 0 0 0 2px #3b2e22, inset 0 0 0 7px #efe4c8, inset 0 0 0 8px #3b2e22, inset 0 0 0 10px #efe4c8, inset 0 0 0 11px #8a6e45, inset 0 0 90px rgba(90,60,20,.28);
+  }
+  .maplibregl-ctrl-attrib { font-size: 11px; }
+  .maplibregl-ctrl-top-left { top: 12px; left: 12px; }
+  .map-off { display: none; }
+  .no-map #map, .no-map .legend, .no-map .map-ui, .no-map .cartouche, .no-map .compass { display: none; }
+  .no-map .map-off { display: grid; place-content: center; gap: 8px; position: absolute; inset: 0; padding: 24px; text-align: center; color: var(--muted); font-weight: 700; font-size: 15px; background: var(--paper); }
+  .no-map .map-off b { font-family: var(--serif); font-weight: 400; font-size: 24px; color: var(--ink); }
+
+  .cartouche {
+    position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 3; pointer-events: none; text-align: center;
+    background: rgba(248,241,223,.94); padding: 6px 26px 7px; border: 1px solid #3b2e22;
+    box-shadow: 0 0 0 3px rgba(248,241,223,.94), 0 0 0 4px #8a6e45, 0 4px 12px rgba(60,40,10,.25);
+    border-radius: 2px; transition: opacity .4s;
+  }
+  .cartouche::before, .cartouche::after { content: "❦"; position: absolute; top: 50%; transform: translateY(-50%); color: #8a6e45; font-size: 15px; }
+  .cartouche::before { left: 7px; transform: translateY(-50%) scaleX(-1); }
+  .cartouche::after { right: 7px; }
+  .cartouche b { display: block; font-family: var(--sc); font-weight: 400; font-size: 21px; letter-spacing: .06em; line-height: 1.1; white-space: nowrap; }
+  .cartouche small { display: block; font-family: var(--serif); font-style: italic; font-size: 13px; color: var(--muted); }
+
+  .compass { position: absolute; right: 18px; top: 18px; width: 62px; height: 62px; z-index: 3; pointer-events: none; filter: drop-shadow(0 2px 3px rgba(40,25,10,.3)); }
+  .legend {
+    position: absolute; left: 18px; bottom: 18px; z-index: 3;
+    background: rgba(248,241,223,.95); border: 1px solid #8a6e45; box-shadow: 0 0 0 3px rgba(248,241,223,.95), 0 0 0 4px #3b2e22, var(--shadow);
+    padding: 7px 11px; font-size: 12.5px; line-height: 1.65; max-width: 260px; border-radius: 2px;
+  }
+  .legend h4 { margin: 0 0 2px; font-family: var(--sc); font-weight: 400; font-size: 14px; letter-spacing: .06em; }
+  .legend .row { display: flex; align-items: center; gap: 7px; }
+  .legend i { width: 18px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+  .legend i.ln { height: 0; border-top: 3px solid var(--red); border-radius: 0; }
+  .legend.folded .row { display: none; }
+  .legend h4 button { border: 0; background: none; padding: 0 0 0 6px; font-size: 12px; color: var(--muted); }
+
+  .map-ui { position: absolute; display: flex; gap: 6px; z-index: 3; }
+  .map-ui.zoom { right: 18px; bottom: 18px; flex-direction: column; }
+  .map-ui button {
+    width: 38px; height: 38px; border-radius: 6px; border: 1px solid #8a6e45;
+    background: var(--paper-2); box-shadow: var(--shadow); font-size: 20px; font-weight: 800; line-height: 1;
+  }
+  .map-ui button:hover { background: #fff; }
+
+  .pin { cursor: pointer; border: 0; background: none; padding: 0; width: 30px; height: 30px; }
+  .pin .ico {
+    position: absolute; inset: 0; border-radius: 50%; display: grid; place-items: center;
+    background: var(--paper-2); border: 2px solid #3b2e22; box-shadow: 0 2px 4px rgba(40,25,10,.4); transition: transform .2s;
+  }
+  .pin .ico svg { width: 17px; height: 17px; }
+  .pin.done .ico { background: #e9dcb6; }
+  .pin.now .ico { border-color: var(--red); }
+  .pin.now .ico::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid var(--red); animation: ripple 1.8s ease-out infinite; }
+  .pin.viewing .ico { transform: scale(1.25); border-color: var(--red); }
+  .pin .lbl {
+    position: absolute; left: 36px; top: 50%; transform: translateY(-50%); white-space: nowrap; pointer-events: none;
+    font: 400 15px/1 var(--serif); font-style: italic; color: var(--ink);
+    text-shadow: 0 0 3px #f6efdc, 0 0 3px #f6efdc, 0 0 6px #f6efdc, 0 0 8px #f6efdc;
+  }
+  .pin:not(.viewing) .lbl { display: none; }
+  @keyframes ripple { 0% { transform: scale(.7); opacity: .9; } 100% { transform: scale(1.8); opacity: 0; } }
+
+  .toast {
+    position: absolute; left: 50%; top: 92px; transform: translate(-50%, -12px); z-index: 4;
+    background: var(--wood); color: var(--gold-hi); border: 1px solid var(--gold); box-shadow: var(--shadow);
+    padding: 8px 18px; border-radius: 6px; font-family: var(--serif); font-size: 17px; text-align: center;
+    opacity: 0; transition: opacity .3s, transform .3s; pointer-events: none; max-width: calc(100% - 40px);
+  }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ---------- Advisor pop-up ---------- */
+  .advisor {
+    position: absolute; left: 18px; bottom: 18px; z-index: 6; width: min(600px, calc(100% - 36px));
+    display: grid; grid-template-columns: 128px 1fr; align-items: end; gap: 0;
+    filter: drop-shadow(0 10px 24px rgba(20,10,0,.45));
+    animation: advIn .45s cubic-bezier(.2,.9,.3,1.15);
+  }
+  @keyframes advIn { from { transform: translateY(40px); opacity: 0; } }
+  .advisor.out { animation: advOut .3s ease forwards; }
+  @keyframes advOut { to { transform: translateY(30px); opacity: 0; } }
+  .frame {
+    width: 120px; height: 160px; position: relative; z-index: 1; margin-bottom: 10px;
+    border-radius: 6px; padding: 5px;
+    background: linear-gradient(135deg, #f6dc94, #b7862a 35%, #f3d585 55%, #8f6418);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.4), 0 0 0 1px #4d3510;
+  }
+  .frame img {
+    display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 3px;
+    box-shadow: inset 0 0 0 1px #4d3510; filter: sepia(.35) contrast(1.05);
+  }
+  .frame::after { content: ""; position: absolute; inset: 5px; border-radius: 3px; box-shadow: inset 0 0 18px rgba(40,20,0,.55); pointer-events: none; }
+  .bubble {
+    position: relative; margin-left: -14px; padding: 12px 18px 12px 30px; min-height: 150px; display: flex; flex-direction: column;
+    background: linear-gradient(#fbf5e4, #f1e5c3); border: 1px solid #8a6e45; border-radius: 6px;
+    box-shadow: inset 0 0 0 3px #fbf5e4, inset 0 0 0 4px rgba(138,110,69,.5);
+  }
+  .bubble .who { font-family: var(--sc); font-size: 20px; line-height: 1.1; color: var(--ink); }
+  .bubble .who small { display: block; font-family: "Nunito", sans-serif; font-size: 12.5px; font-weight: 700; color: var(--muted); letter-spacing: .02em; }
+  .bubble p { margin: 6px 0 8px; font-size: 16.5px; line-height: 1.45; flex: 1; }
+  .bubble .foot { display: flex; align-items: center; gap: 10px; }
+  .bubble .count { font-size: 12.5px; font-weight: 800; color: var(--muted); flex: 1; }
+  .ask-again {
+    position: absolute; left: 18px; bottom: 18px; z-index: 5; display: flex; align-items: center; gap: 8px;
+    padding: 4px 14px 4px 4px; border-radius: 99px; border: 1px solid #8a6e45; background: var(--paper-2); box-shadow: var(--shadow);
+    font-weight: 800; font-size: 13.5px;
+  }
+  .ask-again img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; object-position: 50% 25%; border: 2px solid var(--gold); filter: sepia(.35); }
+  .ask-again:hover { background: #fff; }
+  body.adv-open .legend { display: none; }
+
+  /* ---------- Panel: the event window ---------- */
+  .panel { background: var(--paper-2); border-left: 3px solid var(--gold); box-shadow: inset 1px 0 0 #6b5226; overflow-y: auto; overscroll-behavior: contain; position: relative; }
+  .panel-inner { padding: 0 0 40px; animation: rise .45s ease; }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+  .ev-head {
+    padding: 16px 24px 14px; color: #f3e6c6;
+    background: radial-gradient(ellipse at 30% 0, rgba(195,154,62,.25), transparent 60%), linear-gradient(#3a2c1f, #221a13);
+    border-bottom: 3px solid var(--gold); box-shadow: inset 0 -5px 0 -3px #6b5226;
+  }
+  .eyebrow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .chip { font-size: 11.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; border-radius: 4px; padding: 2px 8px; background: rgba(236,208,138,.16); color: var(--gold-hi); border: 1px solid rgba(236,208,138,.35); }
+  .ev-head h2 { font-family: var(--serif); font-weight: 400; font-size: 33px; line-height: 1.08; margin: 2px 0 4px; color: #fff; }
+  .ev-head .place { margin: 0; color: #d8c69c; font-family: var(--serif); font-style: italic; font-size: 16px; }
+  .ev-body { padding: 18px 24px 0; }
+  .story p { margin: 0 0 12px; }
+  .story strong { color: #7a2e1d; }
+  dfn {
+    font-style: normal; font-weight: 700; color: #6a3e14; cursor: help;
+    text-decoration: underline dotted #b08a4a 2px; text-underline-offset: 3px;
+  }
+  .gtip {
+    position: fixed; z-index: 80; max-width: 270px; padding: 9px 12px; border-radius: 6px; pointer-events: none;
+    background: var(--wood); color: #f3e6c6; font-size: 14px; line-height: 1.4; box-shadow: var(--shadow); border: 1px solid var(--gold);
+  }
+  .gtip b { color: var(--gold-hi); display: block; font-family: var(--serif); font-weight: 400; font-size: 16px; }
+  blockquote {
+    margin: 16px 0; padding: 14px 18px 12px 46px; position: relative;
+    background: var(--card); border: 1px solid var(--line); border-radius: 6px;
+    font-family: var(--serif); font-style: italic; font-size: 20px; line-height: 1.35;
+  }
+  blockquote::before { content: "\201C"; position: absolute; left: 12px; top: 0; font-size: 58px; color: var(--gold); font-style: normal; line-height: 1; }
+  blockquote cite { display: block; margin-top: 6px; font-family: "Nunito", sans-serif; font-style: normal; font-size: 13px; color: var(--muted); font-weight: 700; }
+
+  .decision {
+    margin: 20px 0 0; border-radius: 6px; overflow: hidden;
+    background: var(--card); border: 1px solid #8a6e45; box-shadow: 0 0 0 3px var(--card), 0 0 0 4px var(--line), var(--shadow);
+  }
+  .decision-h {
+    display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: linear-gradient(#efe0b8, #e4d09f);
+    border-bottom: 1px solid #b89a5e;
+  }
+  .decision-h svg { width: 20px; height: 20px; color: #7a2e1d; flex-shrink: 0; }
+  .decision-h h3 { margin: 0; font-family: var(--sc); font-weight: 400; font-size: 18px; letter-spacing: .05em; }
+  .decision-h .pts { margin-left: auto; font-size: 13px; font-weight: 800; color: var(--muted); }
+  .decision-in { padding: 14px 16px 16px; }
+  .prompt { font-weight: 800; font-size: 18px; line-height: 1.35; margin: 0 0 12px; }
+  .locked { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 6px; background: var(--gold-soft); color: #6a4a12; font-weight: 700; font-size: 15px; margin-bottom: 10px; }
+  .locked img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; object-position: 50% 25%; border: 2px solid var(--gold); }
+  .opts { display: grid; gap: 9px; }
+  .opt {
+    position: relative; text-align: left; padding: 11px 14px 11px 44px; border-radius: 5px; line-height: 1.35; font-weight: 700;
+    border: 1px solid #a88a54; background: linear-gradient(#fffaf0, #f4e8cb);
+    box-shadow: inset 0 1px 0 #fff, 0 1px 0 rgba(90,60,20,.15);
+    transition: border-color .15s, background .15s, transform .1s;
+  }
+  .opt .key {
+    position: absolute; left: 10px; top: 10px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--wood-2); color: var(--gold-hi); font-family: var(--serif); font-size: 15px; font-weight: 400;
+  }
+  .opt:hover:not(:disabled) { border-color: var(--red); transform: translateY(-1px); background: linear-gradient(#fff, #f8eed6); }
+  .opt:disabled { cursor: default; }
+  .opts.wait .opt { opacity: .5; }
+  .opt.sel { border: 2px solid var(--red); padding: 10px 13px 10px 43px; }
+  .opt.dim { opacity: .62; }
+  .opt .why { display: block; font-weight: 600; color: var(--muted); margin-top: 5px; font-size: 14.5px; }
+  .opt .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
+  .tag { font-size: 11.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; border-radius: 4px; padding: 2px 7px; }
+  .tag.hist { background: var(--green-soft); color: var(--green); border: 1px solid #b6cfae; }
+  .tag.you { background: var(--red-soft); color: var(--red); border: 1px solid #e3b7aa; }
+  .tag.pts { background: var(--gold-soft); color: #7a5310; border: 1px solid #e8cf8f; }
+  .history {
+    margin-top: 14px; padding: 14px 16px; border-radius: 6px; background: var(--green-soft); border: 1px solid #b6cfae; animation: rise .35s ease;
+  }
+  .history h4 { margin: 0 0 4px; font-family: var(--sc); font-weight: 400; font-size: 18px; color: var(--green); }
+  .history p { margin: 0; font-size: 16px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; justify-content: center;
+    padding: 10px 18px; border-radius: 6px; border: 1px solid #5e170f;
+    background: linear-gradient(#b23a2a, #8c2316); color: #fff6e2; font-weight: 800; font-size: 16px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 2px 0 #5e170f; transition: transform .1s, filter .15s, opacity .15s;
+  }
+  .btn:hover:not(:disabled) { filter: brightness(1.1); }
+  .btn:active:not(:disabled) { transform: translateY(2px); box-shadow: none; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn.gold { background: linear-gradient(#e2bb5d, #b48523); border-color: #6b4e14; color: #2a1d08; box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 2px 0 #6b4e14; }
+  .btn.ghost { background: transparent; color: var(--ink); box-shadow: none; border: 1px solid #a88a54; }
+  .btn.ghost:hover:not(:disabled) { background: #fff; }
+  .btn.small { padding: 6px 12px; font-size: 14px; }
+  .btn.big { padding: 13px 22px; font-size: 18px; }
+  .row-btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+
+  /* journal */
+  .journal {
+    margin-top: 18px; padding: 16px 18px 14px; border-radius: 6px;
+    background: repeating-linear-gradient(to bottom, transparent 0 31px, #e6d8bb 31px 32px), #fffaf0;
+    border: 1px solid var(--line); box-shadow: var(--shadow); position: relative;
+  }
+  .journal::before { content: ""; position: absolute; left: 34px; top: 0; bottom: 0; width: 2px; background: rgba(158,42,30,.25); }
+  .journal h4 { margin: 0 0 2px 28px; font-family: var(--serif); font-weight: 400; font-size: 22px; }
+  .journal p { margin: 0 0 6px 28px; font-weight: 700; font-size: 15px; color: var(--muted); }
+  .journal textarea {
+    width: calc(100% - 28px); margin-left: 28px; min-height: 128px; resize: vertical;
+    border: 0; background: transparent; font-family: var(--hand); font-size: 24px; line-height: 32px; color: #1d2d6b; padding: 0; outline: none;
+  }
+  .journal .jmeta { display: flex; justify-content: space-between; margin-left: 28px; font-size: 13px; color: var(--muted); font-weight: 700; }
+  .journal .jmeta .ok { color: var(--green); }
+
+  .next-bar { margin: 22px 24px 0; padding-top: 18px; border-top: 2px dashed var(--line); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .next-bar .todo { color: var(--muted); font-size: 14px; font-weight: 700; flex: 1; min-width: 160px; }
+
+  /* campaign choice cards */
+  .choose { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0 6px; }
+  .camp {
+    text-align: left; padding: 0; border-radius: 6px; overflow: hidden; border: 1px solid #8a6e45; background: var(--card);
+    box-shadow: var(--shadow); transition: transform .15s, box-shadow .15s; display: flex; flex-direction: column;
+  }
+  .camp:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 4px 10px rgba(60,40,10,.15), 0 16px 32px rgba(60,40,10,.18); }
+  .camp:disabled { opacity: .5; cursor: not-allowed; }
+  .camp .faces { display: flex; height: 92px; background: var(--wood); border-bottom: 3px solid var(--gold); }
+  .camp .faces img { flex: 1; min-width: 0; object-fit: cover; object-position: 50% 30%; filter: sepia(.35); }
+  .camp .txt { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 2px; flex: 1; }
+  .camp .txt b { font-family: var(--serif); font-weight: 400; font-size: 22px; line-height: 1.1; display: flex; align-items: center; gap: 8px; }
+  .camp .txt b .flag { width: 24px; height: 16px; box-shadow: 0 0 0 1px rgba(0,0,0,.4); border-radius: 2px; }
+  .camp .txt span { font-size: 13.5px; color: var(--muted); font-weight: 700; }
+  .camp .txt em { font-style: normal; font-size: 13px; font-weight: 800; color: var(--green); margin-top: auto; padding-top: 4px; }
+
+  /* ---------- Intro letter ---------- */
+  .overlay { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px; background: rgba(34,26,19,.6); backdrop-filter: blur(3px); overflow-y: auto; }
+  .letter {
+    width: min(760px, 100%); position: relative;
+    background: radial-gradient(ellipse at 20% 10%, rgba(255,255,255,.7), transparent 60%), radial-gradient(ellipse at 90% 100%, rgba(160,110,40,.18), transparent 55%), #f6ecd4;
+    border-radius: 4px; padding: 36px 44px 30px; box-shadow: 0 30px 80px rgba(0,0,0,.4), inset 0 0 60px rgba(150,100,30,.18), inset 0 0 0 10px #f6ecd4, inset 0 0 0 11px #8a6e45;
+    animation: rise .6s ease;
+  }
+  .letter .dateline { font-family: var(--serif); font-style: italic; color: var(--muted); margin: 0 0 6px; }
+  .letter h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(32px, 5vw, 48px); line-height: 1.05; margin: 0 0 14px; }
+  .letter p { margin: 0 0 12px; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 16px 0; }
+  .steps div { background: rgba(255,255,255,.55); border: 1px solid var(--line); border-radius: 6px; padding: 12px; font-size: 14.5px; line-height: 1.35; }
+  .steps b { display: block; font-size: 15px; margin-bottom: 2px; color: #7a2e1d; }
+  .steps .n { font-family: var(--serif); font-size: 26px; color: var(--gold); line-height: 1; }
+  .note { font-size: 14.5px; background: var(--gold-soft); border: 1px solid #e8cf8f; border-radius: 6px; padding: 10px 12px; }
+  .sign-row label { display: block; font-weight: 800; font-size: 14px; color: var(--muted); }
+  .sign-row input {
+    display: block; width: 100%; max-width: 420px; margin-top: 4px; border: 0; border-bottom: 2px solid #8b7558; background: transparent;
+    font-family: var(--hand); font-size: 34px; padding: 0 4px; color: #1d2d6b; outline: none;
+  }
+  .letter .resume { margin: 16px 0 0; font-size: 14.5px; color: var(--muted); }
+  .resume button { background: none; border: 0; padding: 0; color: #7a2e1d; font-weight: 800; text-decoration: underline; }
+
+  /* ---------- Finale ---------- */
+  .finale { text-align: center; }
+  .medal { display: block; width: 150px; height: auto; margin: 4px auto 6px; overflow: visible; filter: drop-shadow(0 8px 10px rgba(90,60,10,.3)); animation: spinIn 1.1s cubic-bezier(.2,.9,.3,1.25); }
+  @keyframes spinIn { from { transform: translateY(-30px) rotateY(180deg) scale(.5); opacity: 0; } }
+  .bigstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 16px 0; }
+  .bigstats div { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 10px 6px; }
+  .bigstats b { display: block; font-family: var(--serif); font-size: 30px; font-weight: 400; line-height: 1.1; }
+  .bigstats span { font-size: 12.5px; color: var(--muted); font-weight: 700; }
+  .legacy { text-align: left; }
+  .legacy h3 { font-family: var(--serif); font-weight: 400; font-size: 24px; margin: 18px 0 6px; }
+  .recap { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 6px; text-align: left; font-size: 14.5px; }
+  .recap li { padding: 8px 10px; border-radius: 6px; background: var(--card); border-left: 4px solid var(--line); }
+  .recap li.hit { border-left-color: var(--green); }
+  .recap li b { display: block; }
+  .confetti { position: fixed; top: -12px; width: 9px; height: 14px; z-index: 60; pointer-events: none; animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(105vh) rotate(720deg); } }
+  .turn-in { margin: 6px 0 0; color: var(--muted); font-size: 14px; font-weight: 700; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 1100px) { .tab .pips { display: none; } }
+  @media (max-width: 980px) {
+    body { overflow: auto; height: auto; }
+    .app { grid-template-columns: 1fr; }
+    .mapwrap { height: 46vh; min-height: 280px; position: sticky; top: 0; z-index: 2; }
+    .panel { border-left: 0; border-top: 3px solid var(--gold); overflow: visible; }
+    .legend { display: none; }
+    .compass { width: 44px; height: 44px; top: 14px; right: 14px; }
+    .cartouche { top: 14px; padding: 4px 22px 5px; }
+    .cartouche b { font-size: 17px; }
+    .advisor { position: fixed; left: 8px; right: 8px; bottom: 8px; width: auto; grid-template-columns: 96px 1fr; }
+    .frame { width: 90px; height: 120px; }
+    .bubble { min-height: 120px; padding: 10px 14px 10px 26px; }
+    .bubble p { font-size: 15.5px; }
+    body.adv-open .panel { padding-bottom: 230px; }
+    .ask-again { position: fixed; left: 10px; bottom: 10px; }
+    .toast { top: 70px; }
+  }
+  @media (max-width: 640px) {
+    .topbar { padding: 7px 10px; gap: 8px; flex-wrap: wrap; }
+    .brand { font-size: 17px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .topbar a.home span { display: none; }
+    .tabs { order: 3; flex-basis: 100%; }
+    .tab { flex: 1; justify-content: center; }
+    .stats { gap: 6px; }
+    .stat { padding: 2px 7px; font-size: 11px; }
+    .stat b { font-size: 15px; }
+    /* the year is on every chapter's heading, so the bar keeps only the two scores */
+    .stat.year { display: none; }
+    .meter { width: 56px; margin-top: 3px; }
+    .cartouche { left: 14px; transform: none; max-width: calc(100% - 78px); padding: 4px 14px 5px; text-align: left; }
+    .cartouche::before, .cartouche::after { display: none; }
+    .cartouche b { white-space: normal; font-size: 15px; }
+    .panel { padding-bottom: 64px; }
+    .ev-head, .ev-body { padding-left: 16px; padding-right: 16px; }
+    .next-bar { margin-left: 16px; margin-right: 16px; }
+    .choose, .steps { grid-template-columns: 1fr; }
+    .letter { padding: 30px 22px 24px; }
+    .bigstats b { font-size: 24px; }
+    .cartouche small { display: none; }
+  }
+</style>
+
+<header class="topbar">
+  <a class="home" href="index.html" title="Back to Mr. Dushin's Classroom">←<span> Classroom</span></a>
+  <div class="brand">Forging Nations</div>
+  <nav class="tabs" id="tabs" aria-label="Campaigns"></nav>
+  <div class="stats">
+    <div class="stat year"><b id="yr">—</b>Year</div>
+    <div class="stat" id="stat-unity"><b id="unity-n">—</b><div class="meter"><i id="unity-bar"></i></div><span id="unity-l">United</span></div>
+    <div class="stat" id="stat-pts"><b id="pts-n">0</b>Prestige</div>
+  </div>
+</header>
+
+<div class="app">
+  <section class="mapwrap" id="mapwrap" aria-label="Map">
+    <div id="map"></div>
+    <div class="map-off"><b>The map couldn't load.</b>You can still play the whole game. Reload the page later to see the map.</div>
+    <div class="cartouche" id="cartouche" hidden><small id="cart-sub"></small><b id="cart-t"></b></div>
+    <svg class="compass" id="compass" viewBox="-50 -50 100 100" aria-hidden="true"></svg>
+    <div class="legend" id="legend" hidden></div>
+    <div class="map-ui zoom">
+      <button id="zin" title="Zoom in" aria-label="Zoom in">+</button>
+      <button id="zout" title="Zoom out" aria-label="Zoom out">−</button>
+    </div>
+    <div class="toast" id="toast" role="status"></div>
+    <button class="ask-again" id="ask-again" hidden></button>
+    <div class="advisor" id="adv" hidden role="dialog" aria-live="polite" aria-labelledby="adv-who">
+      <div class="frame"><img id="adv-img" alt=""></div>
+      <div class="bubble">
+        <div class="who" id="adv-who"></div>
+        <p id="adv-text"></p>
+        <div class="foot"><span class="count" id="adv-count"></span><button class="btn small" id="adv-next">Next ▸</button></div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="panel" id="panel" aria-live="polite"></aside>
+</div>
+<div class="gtip" id="gtip" hidden></div>
+
+<div class="overlay" id="intro">
+  <div class="letter" role="dialog" aria-labelledby="intro-h">
+    <p class="dateline">Europe, in the middle of the nineteenth century</p>
+    <h1 id="intro-h">Two Nations Waiting to Be Born</h1>
+    <p>In 1840 there was no country called <b>Germany</b> and no country called <b>Italy</b>. German speakers lived in 39 separate states. Italians lived in eight, several of them ruled by foreigners. By 1871 both had become powerful united nations.</p>
+    <p>How did it happen? You are about to find out by making the decisions yourself, with help from the people who were really there: <b>Cavour</b>, <b>Garibaldi</b>, <b>Bismarck</b> and more.</p>
+    <div class="steps">
+      <div><span class="n">I.</span><b>Listen</b>Your advisors appear on screen to explain what is going on.</div>
+      <div><span class="n">II.</span><b>Decide</b>Choose what to do, then see what really happened. Watch the map change.</div>
+      <div><span class="n">III.</span><b>Write</b>Answer a few questions in your notebook and turn it in at the end.</div>
+    </div>
+    <p class="note"><b>How Prestige works:</b> you earn the most points for choices that really would have worked at the time. That is not always the same as the fairest or kindest choice. Be ready to think about that!</p>
+    <div class="sign-row">
+      <label for="name-in">Sign your name
+        <input id="name-in" autocomplete="off" maxlength="40" placeholder="Your name">
+      </label>
+    </div>
+    <div class="choose" id="intro-choose"></div>
+    <p class="resume" id="resume" hidden></p>
+  </div>
+</div>
+
+<script>
+addEventListener("DOMContentLoaded", () => {
+"use strict";
+
+/* ===================== Content ===================== */
+const ADV = {
+  mazzini:   { short: "Mazzini", name: "Giuseppe Mazzini", role: "Revolutionary writer, founder of Young Italy", img: "portraits/mazzini.jpg" },
+  cavour:    { short: "Cavour", name: "Count Camillo di Cavour", role: "Prime Minister of Sardinia", img: "portraits/cavour.jpg" },
+  napoleon3: { short: "Napoleon III", name: "Napoleon III", role: "Emperor of the French", img: "portraits/napoleon3.jpg" },
+  victor:    { short: "the King", name: "Victor Emmanuel II", role: "King of Sardinia, then King of Italy", img: "portraits/victor.jpg" },
+  garibaldi: { short: "Garibaldi", name: "Giuseppe Garibaldi", role: "General of the Redshirts", img: "portraits/garibaldi.jpg" },
+  pius:      { short: "the Pope", name: "Pope Pius IX", role: "Head of the Catholic Church, ruler of Rome", img: "portraits/pius.jpg" },
+  list:      { short: "List", name: "Friedrich List", role: "Economist", img: "portraits/list.jpg" },
+  fw4:       { short: "the King", name: "Frederick William IV", role: "King of Prussia", img: "portraits/fw4.jpg" },
+  wilhelm:   { short: "the King", name: "Wilhelm I", role: "King of Prussia", img: "portraits/wilhelm.jpg" },
+  bismarck:  { short: "Bismarck", name: "Otto von Bismarck", role: "Minister-President of Prussia", img: "portraits/bismarck.jpg" },
+  moltke:    { short: "Moltke", name: "Helmuth von Moltke", role: "Chief of the Prussian General Staff", img: "portraits/moltke.jpg" },
+};
+
+const GLOSS = {
+  "peninsula": "A piece of land with water on three sides, like Italy's boot.",
+  "nationalism": "The belief that people who share a language, history and culture should form their own nation and rule themselves.",
+  "risorgimento": "Italian for “rising again”: the movement to unite Italy in the 1800s.",
+  "republic": "A country with no king or queen, where the leaders are chosen by the people.",
+  "constitution": "A written set of basic laws that says how a country is governed and limits the ruler's power.",
+  "papal states": "The lands in central Italy that the Pope ruled as a king.",
+  "prime minister": "The head of a king's government, who runs the country day to day.",
+  "plebiscite": "A vote by all the people on one big question, such as “Should we join Sardinia?”",
+  "dictator": "A ruler with total power. Garibaldi took this title for a short-term government.",
+  "congress of vienna": "The peace conference of 1815 that redrew Europe's map after Napoleon was defeated.",
+  "german confederation": "A loose league of 39 German states (1815–1866), led by Austria. It was not one country.",
+  "customs union": "A group of states that remove the taxes (tolls) on goods traded between them.",
+  "zollverein": "German for “customs union”: the free-trade zone led by Prussia from 1834.",
+  "parliament": "A group of elected representatives who make laws.",
+  "abdicate": "To give up the throne.",
+  "realpolitik": "Politics based on power and practical results, not on ideals or what is morally right.",
+  "annex": "To take over a territory and make it part of your own country.",
+  "victor emmanuel ii": "King of Sardinia from 1849, and the first King of Italy from 1861.",
+  "unification": "Joining several separate states together into one country.",
+};
+
+const CAMPAIGNS = {
+it: {
+  name: "Italy", years: "1848–1870", final: "it1870", faces: ["cavour", "garibaldi", "victor"],
+  pitch: "Free Italy from Austria and unite the peninsula, with Cavour, Garibaldi and the King.",
+  flag: '<svg class="flag" viewBox="0 0 3 2" aria-hidden="true"><rect width="1" height="2" fill="#2f7d45"/><rect x="1" width="1" height="2" fill="#fbf7ee"/><rect x="2" width="1" height="2" fill="#c8352a"/></svg>',
+  legacy: [
+    "Italy was united in just over twenty years, from the failed revolutions of 1848 to the capture of Rome in 1870. It took clever diplomacy (Cavour), the help of foreign armies (France in 1859, Prussia in 1866), the daring of Garibaldi's Redshirts, and plebiscites that let the new kingdom say the people had chosen it.",
+    "The new country still had big problems. The north was richer than the poor, rural south. Most Italians spoke local dialects, not standard Italian. And the Pope told Catholics not to take part in the new kingdom's politics.",
+  ],
+  chapters: [
+  {
+    id: "it1", yr: 1848, when: "Spring 1848", title: "A Land of Many Rulers", place: "Milan, Lombardy",
+    pin: { at: [9.19, 45.46], kind: "battle", label: "Milan" }, focus: [[6, 36.6], [18.6, 47]], scene: "it1848",
+    brief: [
+      "In 1848 there is no country called Italy. The {{peninsula}} is split into eight states. Austria rules the rich north-east (Lombardy–Venetia), and relatives of the Austrian emperor rule the small duchies. The Pope rules the {{Papal States}} in the middle, and a king from the Bourbon family rules the south from Naples.",
+      "Only one state is ruled by an Italian family that is willing to stand up to Austria: the <strong>Kingdom of Sardinia</strong> (also called Piedmont), in the north-west. Its capital is Turin.",
+      "Many Italians are inspired by {{nationalism}}: the idea that people who share a language and culture should rule themselves as one nation. The movement to unite Italy is called the {{Risorgimento}}, which means “rising again.”",
+    ],
+    talk: [
+      ["mazzini", "Greetings, friend! I am Giuseppe Mazzini. I have spent my whole life writing and plotting for one dream: a free, united Italy."],
+      ["mazzini", "I founded a secret society called Young Italy. We believe the people themselves should rise up, throw out their foreign rulers, and create a republic, with no king at all."],
+      ["mazzini", "And now it is happening! In March 1848 the people of Milan drove the Austrian army out in five days of street fighting. King Charles Albert of Sardinia has declared war on Austria. Tell me: how should Italy win its freedom?"],
+    ],
+    ask: "What is the best way to free Italy from its foreign rulers?",
+    options: [
+      { t: "Let the people rise up everywhere. Revolutions alone will set Italy free.", pts: 4, who: "mazzini", say: "Yes! The courage of the people will be enough!",
+        why: "Brave, but the revolutions of 1848 failed. The rebels had no strong army, and they could not agree on what Italy should be." },
+      { t: "Build up one strong Italian state with a modern army, and find a powerful ally to help fight Austria.", pts: 10, best: true, who: "mazzini", say: "Hmm. You sound like a careful politician, not a revolutionary. But perhaps you are right…",
+        why: "This is the plan that finally worked, about ten years later. Austria was one of Europe's great powers, and Italians could not beat it alone." },
+      { t: "Ask Austria politely to leave Italy.", pts: 1, who: "mazzini", say: "Ha! Austria has ruled here since 1815. It will never leave just because we ask nicely.",
+        why: "Austria saw northern Italy as a rich and important part of its empire. It would only leave if it was forced to." },
+    ],
+    history: "The revolutions of 1848–49 all failed. Austria beat Charles Albert's army at Custoza (1848) and Novara (1849), and Charles Albert gave up the throne to his son, {{Victor Emmanuel II}}. Mazzini helped set up a Roman Republic in 1849, but French troops crushed it and brought the Pope back. One thing survived: Sardinia kept its {{constitution}}, so Italians everywhere began to see it as Italy's best hope.",
+  },
+  {
+    id: "it2", yr: 1855, when: "1855", title: "Cavour's Gamble", place: "Turin, Kingdom of Sardinia",
+    pin: { at: [2.35, 48.86], kind: "treaty", label: "Paris" }, focus: [[-2, 40], [24, 52]], scene: "it1848",
+    brief: [
+      "In 1852 King Victor Emmanuel II chose a new {{prime minister}}: <strong>Count Camillo di Cavour</strong>. Cavour was not a dreamer like Mazzini. He was a practical and very clever politician.",
+      "Cavour made Sardinia modern. He built railways, encouraged trade and factories, and improved the army. He wanted Italians everywhere to look at Sardinia and think: <em>that</em> is the state that should lead Italy.",
+      "Meanwhile there is a war far away. Britain and France are fighting Russia in the <strong>Crimean War</strong>, by the Black Sea.",
+    ],
+    talk: [
+      ["cavour", "Good day. I am Count Cavour, Prime Minister of Sardinia. Mazzini's revolutions failed. I prefer careful plans. Politics, I like to say, is the art of the possible."],
+      ["cavour", "Austria is too strong for us alone. We need a powerful friend, and the best choice is France, ruled by Emperor Napoleon III."],
+      ["cavour", "Britain and France have asked us to send soldiers to the Crimean War. Italy has no quarrel with Russia… but this could be our chance. What should we do?"],
+    ],
+    ask: "Should Sardinia join a faraway war that has nothing to do with Italy?",
+    options: [
+      { t: "Stay out. It is not our war, and our soldiers would die for nothing.", pts: 3, who: "cavour", say: "Safe, yes. But then the great powers will forget that Sardinia exists.",
+        why: "Staying out would have saved lives, but Sardinia would have gained no friends among the great powers." },
+      { t: "Send soldiers to fight beside Britain and France, to win their friendship.", pts: 10, best: true, who: "cavour", say: "Exactly. A small army is a small price for a seat at the table with the great powers.",
+        why: "This is what Cavour did. It was a gamble with soldiers' lives, but it gave little Sardinia a voice in Europe." },
+      { t: "Join Russia's side against Britain and France.", pts: 0, who: "cavour", say: "Fight against France? Then who will help us against Austria?",
+        why: "This would have turned Sardinia's only possible allies into enemies." },
+    ],
+    history: "Sardinia sent about 18,000 soldiers to the Crimea. More than 2,000 died, most of them from disease. Britain, France and their allies won. At the peace conference in Paris in 1856, Cavour got the chance to speak about the “Italian question” and to complain about Austria's rule in Italy. Most important of all, he won the friendship of Napoleon III.",
+  },
+  {
+    id: "it3", yr: 1858, when: "July 1858", title: "A Secret Meeting", place: "Plombières, France",
+    pin: { at: [6.46, 47.96], kind: "treaty", label: "Plombières" }, focus: [[1.5, 42.3], [15, 49.6]], scene: "it1848",
+    brief: [
+      "Napoleon III, Emperor of the French, wanted to weaken Austria and make France the leading power in Europe. He also had a soft spot for Italy: as a young man he had joined Italian rebels.",
+      "In July 1858 Cavour secretly traveled to the French spa town of Plombières to meet him. No one was supposed to know.",
+      "Napoleon III made an offer: France would help Sardinia fight Austria, but only if Austria started the war. And France wanted a reward.",
+    ],
+    talk: [
+      ["napoleon3", "Monsieur Cavour, welcome. Let us speak frankly. I am ready to send 200,000 French soldiers to drive Austria out of northern Italy."],
+      ["napoleon3", "In return, France would like two of your provinces: Savoy and Nice. They lie on our side of the Alps, and many people there speak French."],
+      ["cavour", "Nice is the hometown of Garibaldi, one of our greatest heroes. Giving it away will make many Italians furious. But without France we cannot beat Austria. What do you advise?"],
+    ],
+    ask: "Napoleon III wants Nice and Savoy in exchange for helping against Austria. What should Cavour do?",
+    options: [
+      { t: "Accept the deal. Losing two provinces is worth it to drive Austria out.", pts: 10, best: true, who: "napoleon3", say: "Magnifique! Now we need only one thing: Austria must attack first.",
+        why: "This is what Cavour did. He traded land for an army strong enough to beat Austria." },
+      { t: "Refuse. Italian land should never be traded away.", pts: 4, who: "cavour", say: "A proud answer. But proud answers do not defeat 200,000 Austrian soldiers.",
+        why: "Many Italians felt this way, including Garibaldi. But without France, Sardinia had no real chance against Austria." },
+      { t: "Agree now, then break the promise after the war.", pts: 2, who: "napoleon3", say: "I would not try to trick the Emperor of the French, monsieur.",
+        why: "Breaking a deal with France, which had the strongest army in Europe, would have been extremely dangerous." },
+    ],
+    history: "Cavour accepted the secret deal. Then he set a trap. Sardinia gathered troops near the Austrian border and refused to send them home. In April 1859 Austria demanded that Sardinia disarm, and when Cavour refused, Austria declared war. Because Austria had attacked first, France came to Sardinia's side, exactly as planned.",
+  },
+  {
+    id: "it4", yr: 1860, when: "1859–1860", title: "The War of 1859", place: "Solferino, Lombardy",
+    pin: { at: [10.57, 45.37], kind: "battle", label: "Solferino" }, focus: [[5.8, 41.6], [14.6, 47]], scene: "it1848", after: ["it1859", "it1860a"],
+    changes: ["Lombardy joins Sardinia", "Central Italy votes to join · Nice and Savoy go to France"],
+    brief: [
+      "French and Sardinian armies beat the Austrians at <strong>Magenta</strong> and then at <strong>Solferino</strong> in June 1859. Solferino was so bloody that a Swiss businessman who saw the wounded, Henri Dunant, later founded the Red Cross.",
+      "Then Napoleon III surprised everyone. Without asking Cavour, he made peace with Austria at Villafranca. Sardinia would get Lombardy, but Austria would keep Venetia. Cavour was so angry that he resigned.",
+      "Meanwhile, the people of Tuscany, Parma, Modena and the Romagna (the northern part of the Papal States) drove out their rulers. They wanted to join Sardinia.",
+    ],
+    talk: [
+      ["victor", "I am Victor Emmanuel II, King of Sardinia. We have won Lombardy, but Venetia is still Austrian. Napoleon III left us halfway!"],
+      ["victor", "Still, there is good news. The people of central Italy have thrown out their dukes and want to join my kingdom."],
+      ["cavour", "I am back as Prime Minister. The peace treaty says the old rulers should return, and the great powers are watching us closely. How should central Italy join us?"],
+    ],
+    ask: "The people of central Italy want to join Sardinia. How should it happen?",
+    options: [
+      { t: "Send the Sardinian army to take them over.", pts: 3, who: "cavour", say: "The great powers would call it a conquest. France and Austria might both turn against us.",
+        why: "Using force would have looked like a land grab and could have started a new war." },
+      { t: "Hold a plebiscite: let the people vote on whether to join.", pts: 10, best: true, who: "victor", say: "A vote! Then no one in Europe can say we stole these lands.",
+        why: "This is what happened. A vote made the change look fair and legal to the rest of Europe." },
+      { t: "Give the duchies back to their old rulers, as the peace treaty says.", pts: 1, who: "victor", say: "After the people threw them out? They would only rebel again.",
+        why: "The old rulers had no support at home and could only have returned with Austrian soldiers." },
+    ],
+    history: "In March 1860 central Italy held {{plebiscite}}s, and huge majorities voted to join Sardinia (historians think the voting was not always fair or secret). Napoleon III agreed, but only after Cavour paid the price promised at Plombières: Nice and Savoy were handed to France. Garibaldi, born in Nice, never forgave Cavour. Look at the map: Sardinia has more than doubled in size.",
+    journal: "Was a plebiscite (a vote) a fair way to decide whether central Italy should join Sardinia? Explain why or why not.",
+  },
+  {
+    id: "it5", yr: 1860, when: "May–September 1860", title: "The Expedition of the Thousand", place: "Marsala, Sicily",
+    pin: { at: [12.44, 37.8], kind: "battle", label: "Marsala" }, focus: [[10, 36.4], [17.6, 42.6]], scene: "it1860a", after: ["it1860b"],
+    changes: ["Garibaldi's Redshirts conquer Sicily and Naples"],
+    brief: [
+      "<strong>Giuseppe Garibaldi</strong> was the most famous soldier in Italy. He had fought for freedom in South America and defended Mazzini's Roman Republic in 1849. His volunteers wore red shirts, so they were called the <strong>Redshirts</strong>.",
+      "In April 1860 the people of Sicily rebelled against their king, Francis II of the Two Sicilies. Garibaldi wanted to sail south with about a thousand volunteers and help them.",
+      "This put Cavour in a tricky spot. Openly attacking the Two Sicilies would anger the great powers. But if Garibaldi won, Italy would be almost complete.",
+    ],
+    talk: [
+      ["garibaldi", "I am Giuseppe Garibaldi! Cavour gave my hometown, Nice, to France, and I will never forgive him for it. But for Italy, I will put that aside."],
+      ["garibaldi", "I have a thousand volunteers in red shirts, two old steamships and a few rifles. Sicily has risen against its king. We sail from Genoa tonight!"],
+      ["cavour", "Garibaldi is brave but reckless, and he wants a republic, not a king. If he fails, Sardinia gets the blame. If he wins, will he hand his conquests to our king? What should I do?"],
+    ],
+    ask: "Garibaldi wants to invade Sicily with his volunteers. What should Cavour do?",
+    options: [
+      { t: "Arrest Garibaldi before he sails. He is too dangerous.", pts: 3, who: "garibaldi", say: "Arrest me? All of Italy would rise up against you!",
+        why: "Garibaldi was a national hero. Arresting him would have turned many Italians against Cavour and the king." },
+      { t: "Don't openly support him, but don't stop him either. Wait and see.", pts: 10, best: true, who: "cavour", say: "Exactly. If he fails, we never knew him. If he wins, we will be ready.",
+        why: "This is roughly what Cavour did. He let the expedition sail but kept his distance, so Sardinia could not be blamed." },
+      { t: "Send the whole Sardinian army with him.", pts: 2, who: "cavour", say: "And start a war against the Two Sicilies that all of Europe would condemn? No.",
+        why: "An open invasion could have brought other great powers into the war against Sardinia." },
+    ],
+    history: "Garibaldi's Thousand landed at Marsala in May 1860. Thousands of Sicilians joined them, and they won at Calatafimi and took Palermo. In August they crossed to the mainland, and the king's army fell apart. On 7 September 1860 Garibaldi rode into Naples in triumph and ruled the south as {{dictator}}. Look at the map: the red area is Garibaldi's.",
+  },
+  {
+    id: "it6", yr: 1861, when: "October 1860 – March 1861", title: "The Handshake at Teano", place: "Teano, near Naples",
+    pin: { at: [14.07, 41.25], kind: "city", label: "Teano" }, focus: [[7.5, 38.8], [17, 46.3]], scene: "it1860b", after: ["it1861"],
+    changes: ["The Kingdom of Italy is born"],
+    brief: [
+      "Garibaldi's next goal was Rome. But French soldiers guarded Rome to protect the Pope. An attack on Rome could start a war with France and ruin everything.",
+      "So Cavour sent the Sardinian army south through the Pope's lands in the Marche and Umbria, going around Rome itself, to meet Garibaldi before he could march on the city.",
+      "Now Garibaldi, who has always wanted a republic, holds all of southern Italy. King Victor Emmanuel is riding to meet him.",
+    ],
+    talk: [
+      ["victor", "General Garibaldi, I have come south with my army. Italy owes you a great deal."],
+      ["garibaldi", "Your Majesty. My Redshirts conquered half of Italy in five months. Some of my men say I should rule it as a republic, or march straight on to Rome."],
+      ["garibaldi", "Now it's your turn to be Garibaldi. What will you do with the south?"],
+    ],
+    ask: "You are Garibaldi. What will you do with the land you conquered?",
+    options: [
+      { t: "Hand the south over to King Victor Emmanuel, so Italy can be one country.", pts: 10, best: true, who: "victor", say: "You have given me a kingdom. Italy will never forget this.",
+        why: "This is what Garibaldi did. He put Italian unity ahead of his own dream of a republic." },
+      { t: "Keep the south and set up a separate republic.", pts: 3, who: "victor", say: "Then there will be two Italies, and sooner or later they will fight each other.",
+        why: "Italy would have been split in two, and the two sides might have gone to war." },
+      { t: "March on Rome right away, French soldiers or not.", pts: 2, who: "victor", say: "And bring the French army down on all of us? Everything we have won would be lost.",
+        why: "France protected the Pope. Attacking Rome in 1860 would probably have meant war with France." },
+    ],
+    history: "On 26 October 1860 Garibaldi met Victor Emmanuel at Teano and greeted him as “King of Italy.” Plebiscites in the south approved joining. Garibaldi refused every reward and went home to his small farm on the island of Caprera. On 17 March 1861 the <strong>Kingdom of Italy</strong> was proclaimed, with Victor Emmanuel II as its king. Cavour died just three months later. Still missing: Venetia and Rome.",
+    journal: "Garibaldi gave away the land he had conquered. Why do you think he did it? Would you have done the same?",
+  },
+  {
+    id: "it7", yr: 1866, when: "1866", title: "Winning Venetia", place: "Venice, Venetia",
+    pin: { at: [12.33, 45.44], kind: "city", label: "Venice" }, focus: [[6.5, 42.5], [18.5, 48.8]], scene: "it1861", after: ["it1866"],
+    changes: ["Venetia joins Italy"],
+    brief: [
+      "Italy now had a king, a {{parliament}} and a capital in Florence. But Austria still held Venetia, with its great city of Venice.",
+      "In Prussia, a powerful minister named <strong>Otto von Bismarck</strong> was planning a war against Austria for control of Germany. He needed an ally to attack Austria from the south.",
+    ],
+    talk: [
+      ["victor", "The Prussians have sent us a secret offer. If we attack Austria together with them, and they win, Venetia will be ours."],
+      ["victor", "Our army is still young, and Austria is strong. What do you advise?"],
+    ],
+    ask: "Prussia wants Italy as an ally against Austria. What should Italy do?",
+    options: [
+      { t: "Ally with Prussia and attack Austria from the south.", pts: 10, best: true, who: "victor", say: "Then we march! Austria will have to fight on two fronts.",
+        why: "This is what Italy did. Austria had to split its army between Italy and Germany." },
+      { t: "Stay neutral and wait to see who wins.", pts: 4, who: "victor", say: "If we wait, Prussia owes us nothing.",
+        why: "Italy would not have been promised Venetia without joining the fight." },
+      { t: "Ally with Austria against Prussia.", pts: 1, who: "victor", say: "Help the empire that has ruled our people for fifty years? Never!",
+        why: "Austria was the main enemy of Italian unity." },
+    ],
+    history: "Italy joined the war in June 1866, but its army lost at Custoza and its navy lost at Lissa. Luckily for Italy, Prussia crushed Austria at Königgrätz. Austria handed Venetia to Napoleon III, who passed it on to Italy, and a plebiscite approved joining. Italy won Venetia even though it lost its own battles: Prussia's victory was what mattered. (You will see this same war from Bismarck's side in the Germany campaign.)",
+  },
+  {
+    id: "it8", yr: 1870, when: "September 1870", title: "Rome, the Capital", place: "Rome",
+    pin: { at: [12.49, 41.9], kind: "battle", label: "Rome" }, focus: [[6, 36.6], [18.6, 47]], scene: "it1866", after: ["it1870"],
+    changes: ["Rome joins Italy · Unification complete!"],
+    brief: [
+      "Only one piece was missing: <strong>Rome</strong>. Most Italians believed that Rome, the capital of the ancient Roman Empire, had to be the capital of Italy. But the Pope ruled it, and French soldiers had protected him for twenty years.",
+      "In July 1870 France went to war with Prussia. Napoleon III needed every soldier, so he brought his troops home from Rome. In September the Prussians captured Napoleon III himself at the Battle of Sedan.",
+    ],
+    talk: [
+      ["pius", "I am Pius IX, the Pope. Rome has belonged to the Church for more than a thousand years. I will never hand it over to the King of Italy."],
+      ["victor", "The French soldiers have gone home. Nothing stands between our army and Rome… except the Pope himself. What do we do?"],
+    ],
+    ask: "The French have left Rome. What should Italy do?",
+    options: [
+      { t: "Send the army into Rome now, and make it Italy's capital.", pts: 10, best: true, who: "pius", say: "Then I will shut myself inside the Vatican, and the world will know I am a prisoner!",
+        why: "This is what happened. Italy acted while France could not stop it." },
+      { t: "Wait until the Pope agrees to give up Rome peacefully.", pts: 3, who: "victor", say: "The Pope has said he will never agree. We could wait forever.",
+        why: "Pius IX refused every offer. Waiting would have left Rome outside Italy." },
+      { t: "Leave Rome to the Pope forever and keep Florence as the capital.", pts: 2, who: "victor", say: "Italy without Rome? The people would never accept it.",
+        why: "For most Italians, Italy without Rome was not truly Italy." },
+    ],
+    history: "On 20 September 1870 Italian troops blasted a hole in Rome's walls near the Porta Pia and marched in after a short fight. The Romans voted to join Italy, and in 1871 Rome became the capital. Pius IX refused to accept it and called himself a “prisoner in the Vatican.” The quarrel between Italy and the Popes lasted until 1929, when Vatican City became its own tiny country.",
+    quote: { text: "We have made Italy. Now we must make Italians.", cite: "Massimo d'Azeglio, Italian statesman (as it is usually quoted)" },
+    journal: "“We have made Italy. Now we must make Italians.” What do you think d'Azeglio meant?",
+  },
+  ],
+},
+de: {
+  name: "Germany", years: "1834–1871", final: "de1871", faces: ["bismarck", "wilhelm", "moltke"],
+  pitch: "Make Prussia the leader of the German states, with Bismarck, King Wilhelm and General Moltke.",
+  flag: '<svg class="flag" viewBox="0 0 3 2" aria-hidden="true"><rect width="3" height=".67" fill="#1d1d1d"/><rect y=".67" width="3" height=".67" fill="#fbf7ee"/><rect y="1.33" width="3" height=".67" fill="#c8352a"/></svg>',
+  legacy: [
+    "Germany was united “from above,” by Prussia's king, its army and its chief minister, through three short wars (1864, 1866 and 1870–71). The new German Empire quickly became Europe's leading industrial and military power.",
+    "But it was not a democracy. The Kaiser (emperor) and his Chancellor held the real power, and the elected parliament had little control over them. And France wanted revenge for Alsace–Lorraine, a bitterness that helped lead to World War I in 1914.",
+  ],
+  chapters: [
+  {
+    id: "de1", yr: 1834, when: "1834", title: "Thirty-Nine Germanies", place: "Berlin, Kingdom of Prussia",
+    pin: { at: [13.4, 52.52], kind: "city", label: "Berlin" }, focus: [[2.5, 45.6], [23, 55.8]], scene: "de1834",
+    brief: [
+      "After Napoleon was defeated, the great powers met at the {{Congress of Vienna}} (1815) and redrew the map of Europe. The German lands became the {{German Confederation}}: 39 separate states, from big kingdoms down to single cities.",
+      "Each state had its own ruler, army, money and laws. The leader of the Confederation was <strong>Austria</strong>, the biggest German power. Its rival in the north was the <strong>Kingdom of Prussia</strong> (blue on the map).",
+      "Look at the map. Prussia is in two pieces, with other states in between. Every border meant a customs post, where traders had to stop and pay a toll.",
+    ],
+    talk: [
+      ["list", "I am Friedrich List, an economist: I study trade and money. Let me tell you why the German states are so poor compared to Britain."],
+      ["list", "A merchant sending cloth from Hamburg to Austria must stop at border after border and pay a toll at each one. Goods cost too much, and trade crawls along."],
+      ["list", "Prussia has an idea: a {{customs union}}, a group of states that remove the tolls between them. But who should be in it?"],
+    ],
+    ask: "Prussia wants to create a customs union, a free-trade zone between German states. Who should be included?",
+    options: [
+      { t: "German states only, led by Prussia. Leave Austria out.", pts: 10, best: true, who: "list", say: "Excellent. Trade will boom, and every member will start to look to Berlin.",
+        why: "This is the Zollverein of 1834. It made the other states depend on Prussia's economy instead of Austria's." },
+      { t: "All German states, led by Austria.", pts: 3, who: "list", say: "Austria protects its own industries with high tariffs. It would never agree to free trade.",
+        why: "Austria did not want free trade, and letting it lead would have made Austria even stronger." },
+      { t: "No union. Each state should keep its own tolls.", pts: 1, who: "list", say: "Then Germany will stay poor while Britain grows rich.",
+        why: "Keeping the tolls would have kept trade slow and the German states weak." },
+    ],
+    history: "In 1834 Prussia launched the {{Zollverein}}. By the 1860s almost every German state had joined, except Austria. Railways spread across the union, and trade and industry grew fast. The Zollverein did not create one country, but it got Germans used to working together under Prussian leadership.",
+  },
+  {
+    id: "de2", yr: 1849, when: "1848–1849", title: "A Crown from the Gutter", place: "Frankfurt",
+    pin: { at: [8.68, 50.11], kind: "city", label: "Frankfurt" }, focus: [[3, 46], [22.5, 55.6]], scene: "de1848",
+    brief: [
+      "In 1848 revolutions swept across Europe. In the German states, crowds demanded free speech, {{constitution}}s and a united Germany.",
+      "Germans elected a national {{parliament}} that met in Frankfurt. It was full of professors, lawyers and writers. After a year of debate, it wrote a constitution for a united Germany, without Austria.",
+      "In April 1849 the Frankfurt Parliament offered the crown of this new Germany to the King of Prussia, <strong>Frederick William IV</strong>.",
+    ],
+    talk: [
+      ["fw4", "I am Frederick William IV, King of Prussia. These men in Frankfurt want to make me Emperor of the Germans."],
+      ["fw4", "But who are they to give away a crown? I am king by the grace of God, not because some lawyers voted for me. And if I accept, Austria may go to war against me."],
+      ["fw4", "Advise me. Should I accept their crown?"],
+    ],
+    ask: "The Frankfurt Parliament offers to make the King of Prussia emperor of a united Germany. What should he do?",
+    options: [
+      { t: "Accept the crown and become Emperor of Germany.", pts: 4, who: "fw4", say: "And then fight Austria, Russia and half the German princes? Prussia is not ready for that.",
+        why: "Austria and Russia were strongly against it. Accepting could have meant a war Prussia was not ready to win." },
+      { t: "Refuse. Germany should be united by kings and armies, not by a parliament.", pts: 10, best: true, who: "fw4", say: "Exactly. I will not wear a crown from the gutter.",
+        why: "This is what he did. It ended the dream of 1848, and showed that a parliament alone could not unite Germany." },
+      { t: "Ignore the offer and say nothing.", pts: 2, who: "fw4", say: "Silence would look weak. I must give an answer.",
+        why: "Saying nothing would have made Prussia look weak to both the revolutionaries and the other kings." },
+    ],
+    history: "Frederick William IV refused. In private he called it a “crown from the gutter,” because it was offered by elected commoners rather than by his fellow princes. The Frankfurt Parliament fell apart, and Prussian troops crushed the last revolutionaries in Baden in 1849. The lesson many Germans took away: speeches and votes alone would not unite Germany. Power would.",
+  },
+  {
+    id: "de3", yr: 1862, when: "September 1862", title: "Blood and Iron", place: "Berlin",
+    pin: { at: [13.4, 52.52], kind: "city", label: "Berlin" }, focus: [[3, 46], [22.5, 55.6]], scene: "de1862",
+    brief: [
+      "In 1861 a new king, <strong>Wilhelm I</strong>, came to the throne of Prussia. He was a soldier, and he wanted to make the Prussian army bigger and stronger.",
+      "But Prussia now had an elected {{parliament}}, and the liberals who controlled it refused to pay for the army. Wilhelm was so frustrated that he thought about giving up his throne.",
+      "Instead, in September 1862 he appointed a tough, clever politician to run his government: <strong>Otto von Bismarck</strong>.",
+    ],
+    talk: [
+      ["wilhelm", "I am Wilhelm I, King of Prussia. Parliament will not give me the money for my army. I am thinking of giving up my crown."],
+      ["bismarck", "Your Majesty, do not give up. Leave parliament to me. I am Otto von Bismarck."],
+      ["bismarck", "I believe in Realpolitik: politics based on power and practical results, not on ideals. The great questions of our time will not be settled by speeches and votes. They will be settled by iron and blood."],
+      ["bismarck", "Parliament refuses to pay for the army. What should I do?"],
+    ],
+    ask: "Parliament refuses to approve taxes for a bigger army. What should Bismarck do?",
+    options: [
+      { t: "Obey parliament and keep the army small.", pts: 2, who: "bismarck", say: "Then Prussia stays weak, and Austria stays the master of Germany.",
+        why: "Respecting parliament was the democratic choice, but Prussia's army would have stayed too small to challenge Austria." },
+      { t: "Collect the taxes anyway and build the army, ignoring parliament.", pts: 10, best: true, who: "bismarck", say: "Parliament can complain all it likes. The army will be built.",
+        why: "This is what Bismarck did. It broke the constitution, but it gave Prussia the army it would use in three wars." },
+      { t: "Call new elections and hope voters choose a friendlier parliament.", pts: 4, who: "bismarck", say: "We tried that. The voters sent back even more liberals!",
+        why: "Prussia did hold elections in 1862 and 1863, but the liberals kept winning." },
+    ],
+    history: "For four years Bismarck governed without a budget approved by parliament. Taxes were collected and the army was enlarged anyway. Many liberals were outraged, but they forgave him once his wars succeeded. This is an example of {{Realpolitik}}.",
+    quote: { text: "The great questions of the day will not be decided by speeches and majority votes… but by iron and blood.", cite: "Otto von Bismarck, speech to the Prussian parliament, 1862" },
+    journal: "Bismarck ignored the elected parliament to build his army. Can breaking the rules ever be justified to reach a goal? Explain.",
+  },
+  {
+    id: "de4", yr: 1864, when: "1864", title: "The Danish War", place: "Dybbøl, Schleswig",
+    pin: { at: [9.74, 54.91], kind: "battle", label: "Dybbøl" }, focus: [[6.3, 52.2], [14.8, 57.7]], scene: "de1862", after: ["de1864"],
+    changes: ["Denmark loses Schleswig, Holstein and Lauenburg"],
+    brief: [
+      "North of the German states lay two duchies, <strong>Schleswig</strong> and <strong>Holstein</strong>. The King of Denmark ruled them, but most of their people spoke German, and Holstein was even a member of the German Confederation.",
+      "In 1863 Denmark's new king, Christian IX, signed a constitution that tied Schleswig closely to Denmark. German nationalists everywhere were furious.",
+    ],
+    talk: [
+      ["bismarck", "Here is our first chance. All of Germany is angry with Denmark over Schleswig and Holstein."],
+      ["moltke", "I am General Helmuth von Moltke, Chief of the Prussian General Staff. Our army is ready. The Danes are brave, but they are few."],
+      ["bismarck", "The question is not whether to fight, but who to fight alongside. What do you advise?"],
+    ],
+    ask: "Denmark has tried to take over Schleswig. How should Prussia respond?",
+    options: [
+      { t: "Fight Denmark alone, so Prussia gets all the glory.", pts: 4, who: "bismarck", say: "And let Austria call us bullies acting on our own? Too risky.",
+        why: "Acting alone might have led Austria and other powers to step in against Prussia." },
+      { t: "Fight Denmark together with Austria.", pts: 10, best: true, who: "bismarck", say: "Yes. Austria cannot complain about a war it fought itself. And afterward, we will have something to argue about…",
+        why: "This is what Bismarck did. Fighting together kept Austria quiet, and sharing the prize gave Prussia an excuse for a quarrel later." },
+      { t: "Stay out of it. It's a problem for Denmark and the duchies.", pts: 1, who: "bismarck", say: "And let Austria be the hero of Germany? Never.",
+        why: "Germans everywhere wanted action. Doing nothing would have made Prussia look weak." },
+    ],
+    history: "Prussia and Austria invaded together in February 1864. The Prussians stormed the Danish forts at Dybbøl in April, and Denmark gave up the duchies in October. In 1865 the winners split the job: Prussia ran Schleswig and Austria ran Holstein. Sharing two small duchies so far from Austria led to constant quarrels, which is exactly what Bismarck wanted.",
+  },
+  {
+    id: "de5", yr: 1866, when: "1865–1866", title: "Making Friends Before War", place: "Biarritz, France",
+    pin: { at: [-1.56, 43.48], kind: "treaty", label: "Biarritz" }, focus: [[-3.5, 41], [22.5, 56]], scene: "de1864",
+    brief: [
+      "Bismarck now wanted to push Austria out of German affairs for good, and that meant war. But a war with Austria was dangerous if other great powers joined Austria's side.",
+      "The biggest danger was France. Napoleon III might attack Prussia from the west while its army was busy fighting Austria.",
+    ],
+    talk: [
+      ["bismarck", "Austria is still the leading power in the German Confederation. As long as that is true, Germany cannot be united under Prussia."],
+      ["bismarck", "Before I start a war, I must make sure Austria fights alone. Russia is already friendly: we helped the Tsar when the Poles rebelled in 1863. Britain rarely fights on the continent."],
+      ["bismarck", "That leaves France, and one more possible friend in the south. How should I prepare?"],
+    ],
+    ask: "How should Bismarck prepare for a war against Austria?",
+    options: [
+      { t: "Keep France neutral with vague promises, and make an alliance with Italy.", pts: 10, best: true, who: "bismarck", say: "Napoleon III dreams of a reward, and Italy dreams of Venetia. Both dreams will be useful to us.",
+        why: "This is what Bismarck did. France stayed out, and Italy attacked Austria from the south." },
+      { t: "Ask Britain and Russia to fight on Prussia's side.", pts: 3, who: "bismarck", say: "They will not fight for Prussia. And if they did, they would want a say in Germany's future.",
+        why: "Neither Britain nor Russia wanted to go to war over German affairs." },
+      { t: "Prussia needs no help. Attack Austria right away.", pts: 2, who: "bismarck", say: "And if France attacks us from behind? No. First we prepare the ground.",
+        why: "Without preparation, Prussia might have had to fight France and Austria at the same time." },
+    ],
+    history: "In October 1865 Bismarck met Napoleon III at the seaside resort of Biarritz and dropped hints that France might gain some land if it stayed out of a war, but he never put a promise in writing. In April 1866 Prussia signed a secret alliance with Italy: if war came, Italy would attack Austria and get Venetia. Then Bismarck picked a quarrel with Austria over Holstein.",
+  },
+  {
+    id: "de6", yr: 1867, when: "Summer 1866", title: "The Seven Weeks' War", place: "Königgrätz, Bohemia",
+    pin: { at: [15.83, 50.21], kind: "battle", label: "Königgrätz" }, focus: [[3, 46], [22.5, 55.6]], scene: "de1864", after: ["de1866", "de1867"],
+    changes: ["Prussia annexes Hanover, Hesse-Kassel, Nassau, Frankfurt and Schleswig-Holstein", "The North German Confederation is formed"],
+    brief: [
+      "In June 1866 war broke out. Most of the medium-sized German states, including Bavaria, Saxony and Hanover, sided with Austria.",
+      "Moltke used railways to rush Prussian troops to the front. Prussian soldiers also had the <strong>needle gun</strong>, a new rifle that loaded from the back, so they could fire lying down, and much faster than the Austrians.",
+      "On 3 July 1866, at Königgrätz in Bohemia, about 400,000 soldiers fought one of the largest battles of the century. Prussia won a crushing victory.",
+    ],
+    talk: [
+      ["moltke", "Victory, Herr Minister-President! The Austrian army is broken. The road to Vienna is open."],
+      ["wilhelm", "Then we march on Vienna! Austria must be punished. Take its land, and parade through its capital!"],
+      ["bismarck", "Your Majesty, wait. One day we will need Austria as a friend… Advisor, what kind of peace should we make?"],
+    ],
+    ask: "Austria is beaten. What kind of peace should Prussia make?",
+    options: [
+      { t: "March into Vienna and take land from Austria as punishment.", pts: 3, who: "bismarck", say: "And make Austria our enemy forever, while France watches and waits? No.",
+        why: "A harsh peace would have left Austria hungry for revenge, and France might have stepped in." },
+      { t: "A mild peace: Austria loses no land, but must stay out of German affairs.", pts: 10, best: true, who: "wilhelm", say: "Hmph. Very well, Bismarck. You have your way, again.",
+        why: "This is what Bismarck did. Austria accepted defeat quickly, and later became Germany's ally." },
+      { t: "Make peace and give everything back, as if the war never happened.", pts: 1, who: "bismarck", say: "Then why did thousands of soldiers die?",
+        why: "Prussia would have gained nothing from its victory." },
+    ],
+    history: "The Peace of Prague (August 1866) was mild for Austria, but not for Austria's German allies. Prussia {{annex|annexed}} Hanover, Hesse-Kassel, Nassau, the city of Frankfurt and Schleswig-Holstein, finally joining its two halves together. The German Confederation was dissolved. In 1867 Prussia formed the <strong>North German Confederation</strong> with 21 smaller northern states. Only the four southern states (Bavaria, Württemberg, Baden and southern Hesse) stayed outside.",
+    journal: "Why do you think Bismarck wanted to go easy on Austria, even though Prussia had won?",
+  },
+  {
+    id: "de7", yr: 1870, when: "July–September 1870", title: "The Ems Telegram", place: "Bad Ems",
+    pin: { at: [7.72, 50.33], kind: "treaty", label: "Ems" }, focus: [[-2, 45], [16.5, 55.2]], scene: "de1867",
+    brief: [
+      "The four southern German states were still independent, and many of their people, mostly Catholic, did not trust Protestant Prussia. Bismarck believed only a war against a common enemy would bring them in. That enemy was <strong>France</strong>.",
+      "In 1870 Spain offered its empty throne to Prince Leopold, a relative of King Wilhelm. France was alarmed, and the prince withdrew.",
+      "But France wanted more. At the spa town of Ems, the French ambassador asked Wilhelm to promise that no relative of his would ever take the Spanish throne. Wilhelm politely said no, and sent Bismarck a telegram describing what had happened.",
+    ],
+    talk: [
+      ["bismarck", "Here is the King's telegram from Ems. It is polite. Too polite. Nothing in it will make anyone angry."],
+      ["bismarck", "But if I shorten it and cut out the polite parts, it will sound as if the King insulted the French ambassador and sent him away. France would be furious."],
+      ["moltke", "The army is ready, if it comes to war."],
+      ["bismarck", "So. What should I do with this telegram?"],
+    ],
+    ask: "What should Bismarck do with the Ems telegram?",
+    options: [
+      { t: "Publish it exactly as the King wrote it.", pts: 3, who: "moltke", say: "Then the crisis will end quietly, and the southern states will stay out of our union.",
+        why: "The crisis would probably have calmed down, and the southern German states might have stayed independent." },
+      { t: "Shorten it so it sounds insulting, then give it to the newspapers.", pts: 10, best: true, who: "moltke", say: "Now it sounds like a call to battle!",
+        why: "This is what Bismarck did. He did not invent anything, but he twisted the message on purpose to provoke France into declaring war." },
+      { t: "Keep it secret and say nothing.", pts: 2, who: "bismarck", say: "Silence wins nothing.",
+        why: "Nothing would have changed, and Bismarck would have lost his chance." },
+    ],
+    history: "Bismarck's shortened telegram appeared in the newspapers on 14 July 1870. The French public was outraged, and on 19 July France declared war on Prussia. Because France looked like the attacker, the southern German states kept their secret military treaties with Prussia and joined the fight. On 1 September, at Sedan, the Germans surrounded a French army and captured Napoleon III himself.",
+  },
+  {
+    id: "de8", yr: 1871, when: "January–May 1871", title: "The Hall of Mirrors", place: "Versailles, France",
+    pin: { at: [2.12, 48.8], kind: "city", label: "Versailles" }, focus: [[-2, 45], [22.8, 55.9]], scene: "de1867", after: ["de1871"],
+    changes: ["The German Empire is proclaimed · Alsace–Lorraine taken from France"],
+    brief: [
+      "While German armies surrounded Paris, Bismarck bargained with the southern kings. Each was proud, and Bavaria, the largest, did not want to become just another part of Prussia.",
+      "To win them over, Bismarck had to decide: force the south to join, or make deals that let them keep some special rights.",
+    ],
+    talk: [
+      ["wilhelm", "Bismarck, you want to make me German Emperor. But I am King of Prussia! I fear our old Prussia will disappear inside this new empire."],
+      ["bismarck", "Your Majesty, Prussia will lead it. But the King of Bavaria is proud too. He will not join just because we order him to."],
+      ["bismarck", "How should we bring the southern states into the empire?"],
+    ],
+    ask: "How should Bismarck bring the southern German states into the new empire?",
+    options: [
+      { t: "Force them in. Prussia's army is in charge now.", pts: 3, who: "bismarck", say: "And have Bavarians hate Prussia for a hundred years? A forced union will not last.",
+        why: "Forcing the south could have caused resistance and a divided empire." },
+      { t: "Make treaties that let them keep special rights, like Bavaria's own army in peacetime and its own post office.", pts: 10, best: true, who: "wilhelm", say: "A few special privileges, in return for an empire. Very well.",
+        why: "This is what Bismarck did. The southern kings kept their thrones and some powers, so they agreed to join." },
+      { t: "Let the southern states stay independent.", pts: 1, who: "bismarck", say: "After they fought beside us against France? The moment is now, or never.",
+        why: "The war had created a wave of German national feeling. Waiting could have lost the chance." },
+    ],
+    history: "On 18 January 1871, in the Hall of Mirrors at the palace of Versailles, the German princes proclaimed Wilhelm I <strong>German Emperor</strong> (Kaiser). Bismarck became Chancellor. In the Treaty of Frankfurt (May 1871), France had to pay 5 billion francs and give up Alsace and most of Lorraine. Proclaiming the empire in France's own palace, and taking its land, left the French bitter for decades. Many historians see this as one of the roots of World War I.",
+    journal: "The German Empire was created through three wars and proclaimed in the palace of a defeated enemy. How might that affect Germany's relationship with France in the future?",
+  },
+  ],
+},
+};
+const ORDER = ["it", "de"];
+const ALL = ORDER.flatMap(c => CAMPAIGNS[c].chapters.map((ch, i) => Object.assign(ch, { c, i })));
+const FINAL_Q = "Compare the two unifications. Which mattered more, the leaders' clever decisions or war? Use one example from Italy and one from Germany.";
+
+const ICON = {
+  battle: '<svg viewBox="0 0 24 24" fill="none" stroke="#3b2e22" stroke-width="2.2" stroke-linecap="round"><path d="M4 4l11 11M20 4L9 15M13 17l4 4M11 17l-4 4M15 15l2-2M9 15l-2-2"/></svg>',
+  treaty: '<svg viewBox="0 0 24 24" fill="none" stroke="#3b2e22" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M9 10h7M9 14h7M9 18h4"/></svg>',
+  city: '<svg viewBox="0 0 24 24" fill="#3b2e22"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21l1.6-7L2 9.2l7.1-.6z"/></svg>',
+  scroll: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h11a2 2 0 0 1 0 4h-1v10a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-1h11v1a2 2 0 0 0 2 2"/><path d="M8 4a2 2 0 0 0-2 2v11"/></svg>',
+  pen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 11-11-3-3L5 16z"/></svg>',
+};
+
+/* ===================== State ===================== */
+const KEY = "forging-nations-v1";
+const blank = () => ({ name: "", cur: null, prog: { it: 0, de: 0 }, results: {}, journals: {}, heard: {}, done: { it: false, de: false }, final: "" });
+let S = blank();
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.results) S = Object.assign(blank(), s); } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+
+const JOURNAL_MIN = 8; // words
+const words = t => (t || "").trim().split(/\s+/).filter(Boolean).length;
+const journalOk = ch => !ch.journal || words(S.journals[ch.id]) >= JOURNAL_MIN;
+const decided = ch => !!S.results[ch.id];
+const chDone = ch => decided(ch) && journalOk(ch);
+const finalOk = () => words(S.final) >= JOURNAL_MIN;
+const maxPts = ALL.reduce((a, ch) => a + 10 + (ch.journal ? 10 : 0), 0) + 10;
+const points = () => ALL.reduce((a, ch) => a + (S.results[ch.id] ? S.results[ch.id].pts : 0) + (ch.journal && journalOk(ch) ? 10 : 0), 0) + (finalOk() ? 10 : 0);
+
+/* ===================== Helpers ===================== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const wait = ms => new Promise(r => setTimeout(r, ms));
+// {{term}} or {{term|shown words}} becomes a word with a pop-up definition
+const gl = html => html.replace(/\{\{([^}|]+)(?:\|([^}]+))?\}\}/g, (_, k, shown) => {
+  const def = GLOSS[k.toLowerCase()];
+  return def ? `<dfn tabindex="0" data-term="${esc(k.toLowerCase())}">${shown || k}</dfn>` : (shown || k);
+});
+const plain = s => s.replace(/\{\{([^}|]+)(?:\|([^}]+))?\}\}/g, (_, k, shown) => shown || k).replace(/<[^>]+>/g, "");
+
+/* ===================== Map ===================== */
+// Borders: OpenHistoricalMap, as they stood on each scene's date; coast, rivers and lakes: Natural Earth; relief: public elevation tiles.
+const SCENE_TITLE = {
+  it1848: ["Italy", "1848–1859"], it1859: ["Italy", "at the end of 1859"], it1860a: ["Italy", "in the spring of 1860"], it1860b: ["Italy", "in September 1860"],
+  it1861: ["The Kingdom of Italy", "1861–1866"], it1866: ["The Kingdom of Italy", "1866–1870"], it1870: ["The Kingdom of Italy", "in 1870"],
+  de1834: ["The German Confederation", "in 1834"], de1848: ["The German Confederation", "1848–1849"], de1862: ["The German Confederation", "1862–1863"],
+  de1864: ["The German Lands", "after the Danish War, 1864–1866"], de1866: ["The German Lands", "after the war with Austria, 1866"],
+  de1867: ["The North German Confederation", "1867–1870"], de1871: ["The German Empire", "in 1871"],
+};
+// hand-coloured atlas tints: [fill colours, used in turn so neighbours differ]
+const PAL = {
+  prussia: ["#9fb4d3"], north: ["#bfcde2", "#b2c3dc", "#cbd6e7", "#aabbd6", "#c4d0e3", "#b8c6de"],
+  reich: ["#bfcde2", "#b2c3dc", "#cbd6e7", "#aabbd6", "#c4d0e3", "#b8c6de"],
+  german: ["#e8b9a4", "#cbd9a6", "#ead39a", "#d4c0dc", "#a9cfc4", "#efc2a0", "#dcc6c6", "#c9c9a0", "#e2b6c4"],
+  south: ["#e8c690", "#d9b77f", "#efd3a0", "#e1bd86"], duchies: ["#e8b9a4", "#d4c0dc", "#ead39a", "#a9cfc4", "#efc2a0", "#cbd9a6"],
+  austria: ["#ecd27f"], lv: ["#f0b98a"], sardinia: ["#b5cf98"], garibaldi: ["#e3907a"], papal: ["#f4ead0"],
+  sicilies: ["#dcbf9c"], france: ["#dcc3d6"], denmark: ["#e6b3ae"], small: ["#d6cdb6"], foreign: ["#e9e0c9"],
+};
+const LEGEND = {
+  it: [["sardinia", "Kingdom of Sardinia, then Italy"], ["garibaldi", "Garibaldi's conquests"], ["duchies", "Small central states"], ["papal", "Papal States (the Pope)"],
+       ["sicilies", "Kingdom of the Two Sicilies"], ["lv", "Italian lands ruled by Austria"], ["austria", "Austrian Empire"], ["france", "France"]],
+  de: [["prussia", "Kingdom of Prussia"], ["north", "Northern states led by Prussia"], ["reich", "German Empire"], ["german", "Other German states"],
+       ["south", "Independent southern states"], ["duchies", "Schleswig, Holstein & Lauenburg"], ["austria", "Austrian Empire"], ["denmark", "Denmark"], ["france", "France"]],
+};
+const UNION = ["North German Confederation", "German Reich"];
+const NO_LABEL = new Set(["Cisleithania", "Kingdom of Hungary"]);
+const shade = (hex, k) => "#" + [1, 3, 5].map(i => Math.round(parseInt(hex.substr(i, 2), 16) * k).toString(16).padStart(2, "0")).join("");
+const CITIES = [
+  ["Turin", 7.69, 45.07], ["Milan", 9.19, 45.46], ["Venice", 12.33, 45.44], ["Florence", 11.25, 43.77], ["Rome", 12.49, 41.9], ["Naples", 14.25, 40.85],
+  ["Palermo", 13.36, 38.12], ["Genoa", 8.93, 44.41], ["Bologna", 11.34, 44.49], ["Nice", 7.27, 43.7], ["Berlin", 13.4, 52.52], ["Vienna", 16.37, 48.21],
+  ["Munich", 11.58, 48.14], ["Dresden", 13.74, 51.05], ["Frankfurt", 8.68, 50.11], ["Hamburg", 9.99, 53.55], ["Hanover", 9.73, 52.37], ["Stuttgart", 9.18, 48.78],
+  ["Paris", 2.35, 48.86], ["Copenhagen", 12.57, 55.68], ["Strasbourg", 7.75, 48.58], ["Königsberg", 20.51, 54.71], ["Prague", 14.42, 50.08], ["Cologne", 6.96, 50.94],
+  ["Breslau", 17.04, 51.11], ["Kiel", 10.13, 54.32],
+];
+const SEAS = [["Mediterranean Sea", 4.5, 39.2], ["Tyrrhenian Sea", 11.6, 40.0], ["Adriatic Sea", 15.6, 42.9], ["Ionian Sea", 18.8, 38.1], ["Ligurian Sea", 8.6, 43.75],
+              ["North Sea", 4.2, 55.6], ["Baltic Sea", 17.2, 55.9], ["Bay of Biscay", -4.2, 45.2]];
+const pt = (name, lon, lat) => ({ type: "Feature", properties: { name }, geometry: { type: "Point", coordinates: [lon, lat] } });
+const FC = features => ({ type: "FeatureCollection", features });
+const EMPTY = FC([]);
+const BOUNDS_ALL = [[-6, 35], [30, 58.5]];
+const SLOT_PAINT = { fill: ["fill-opacity", 0.8], band: ["line-opacity", 0.45], edge: ["line-opacity", 0.75], uni: ["line-opacity", 0.95], lab: ["text-opacity", 1] };
+const FADE = { duration: 1100, delay: 0 };
+
+function makeStyle() {
+  const slot = X => [
+    { id: "fill-" + X, type: "fill", source: "s" + X, paint: { "fill-color": ["get", "fc"], "fill-opacity": 0, "fill-opacity-transition": FADE } },
+  ];
+  const slotLines = X => [
+    // the darker tint brushed along the inside of every border, like a hand-coloured atlas
+    { id: "band-" + X, type: "line", source: "s" + X, layout: { "line-join": "round" }, paint: {
+      "line-color": ["get", "bc"], "line-opacity": 0, "line-opacity-transition": FADE, "line-blur": 1,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 3, 1.5, 7, 4] } },
+    { id: "edge-" + X, type: "line", source: "s" + X, layout: { "line-join": "round" }, paint: {
+      "line-color": "#4e3c28", "line-opacity": 0, "line-opacity-transition": FADE,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 3, ["match", ["get", "lvl"], 2, 0.7, 0.4], 7, ["match", ["get", "lvl"], 2, 1.6, 0.9]] } },
+    { id: "uni-" + X, type: "line", source: "s" + X, filter: ["==", ["get", "u"], 1], layout: { "line-join": "round", "line-cap": "round" }, paint: {
+      "line-color": "#a3271c", "line-opacity": 0, "line-opacity-transition": FADE, "line-width": ["interpolate", ["linear"], ["zoom"], 3, 1.6, 7, 3.4] } },
+  ];
+  const slotLabels = X => ({ id: "lab-" + X, type: "symbol", source: "l" + X, layout: {
+      "text-field": ["get", "n"], "text-font": ["OpenHistorical Bold"], "text-transform": ["case", [">", ["get", "a"], 2.5], "uppercase", "none"],
+      "text-letter-spacing": ["case", [">", ["get", "a"], 2.5], 0.16, 0.03], "text-max-width": 7, "symbol-sort-key": ["-", 0, ["get", "a"]], "text-padding": 3,
+      "text-size": ["interpolate", ["linear"], ["zoom"],
+        4, ["case", [">", ["get", "a"], 6], 13, [">", ["get", "a"], 1.2], 10.5, 0],
+        6, ["case", [">", ["get", "a"], 6], 17, [">", ["get", "a"], 0.9], 13, [">", ["get", "a"], 0.12], 10.5, 0],
+        8, ["case", [">", ["get", "a"], 6], 20, [">", ["get", "a"], 0.9], 15, 12]] },
+    paint: { "text-color": "#3a2c1e", "text-opacity": 0, "text-opacity-transition": FADE, "text-halo-color": "rgba(246,238,215,0.85)", "text-halo-width": 1.4 } });
+  return {
+    version: 8,
+    glyphs: "https://www.openhistoricalmap.org/map-styles/fonts/{fontstack}/{range}.pbf",
+    sources: {
+      land: { type: "geojson", data: EMPTY, attribution: "Natural Earth" }, sea: { type: "geojson", data: EMPTY }, waterlines: { type: "geojson", data: EMPTY },
+      lakes: { type: "geojson", data: EMPTY }, rivers: { type: "geojson", data: EMPTY },
+      dem: { type: "raster-dem", tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"], encoding: "terrarium", tileSize: 256, maxzoom: 10, attribution: "Terrain: Mapzen" },
+      sA: { type: "geojson", data: EMPTY, attribution: '<a href="https://www.openhistoricalmap.org/copyright" target="_blank">OpenHistoricalMap</a>' },
+      sB: { type: "geojson", data: EMPTY }, lA: { type: "geojson", data: EMPTY }, lB: { type: "geojson", data: EMPTY },
+      cities: { type: "geojson", data: FC(CITIES.map(c => pt(...c))) }, seas: { type: "geojson", data: FC(SEAS.map(c => pt(...c))) },
+    },
+    layers: [
+      { id: "sea", type: "background", paint: { "background-color": "#c4d3cd" } },
+      { id: "land", type: "fill", source: "land", paint: { "fill-color": "#efe4c6" } },
+      ...slot("A"), ...slot("B"),
+      { id: "relief", type: "hillshade", source: "dem", paint: {
+          "hillshade-exaggeration": 0.45, "hillshade-shadow-color": "rgba(70,50,25,0.55)",
+          "hillshade-highlight-color": "rgba(255,250,235,0.35)", "hillshade-accent-color": "rgba(90,70,40,0.3)" } },
+      // the sea is painted over the relief, so the sea floor doesn't show (and low land like the Netherlands stays land)
+      { id: "sea-fill", type: "fill", source: "sea", paint: { "fill-color": "#c4d3cd" } },
+      // water-lining: thin lines echoing the coast out to sea, as engravers drew it
+      { id: "waterlines", type: "line", source: "waterlines", layout: { "line-join": "round" }, paint: {
+          "line-color": "#6b5a42", "line-width": 0.7, "line-opacity": ["match", ["get", "k"], 0, 0.42, 1, 0.3, 2, 0.2, 0.12] } },
+      { id: "coast", type: "line", source: "land", layout: { "line-join": "round" }, paint: { "line-color": "#3b2e22", "line-width": ["interpolate", ["linear"], ["zoom"], 3, 0.5, 7, 1] } },
+      { id: "lakes", type: "fill", source: "lakes", paint: { "fill-color": "#c4d3cd", "fill-outline-color": "#3b2e22" } },
+      { id: "rivers", type: "line", source: "rivers", layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": "#6f97a0", "line-width": ["interpolate", ["linear"], ["zoom"], 3, 0.5, 7, 1.6] } },
+      ...slotLines("A"), ...slotLines("B"),
+      { id: "river-names", type: "symbol", source: "rivers", minzoom: 5.5, filter: ["!=", ["get", "name"], ""],
+        layout: { "symbol-placement": "line", "text-field": ["get", "name"], "text-font": ["OpenHistorical Italic"], "text-size": 12, "symbol-spacing": 350 },
+        paint: { "text-color": "#41707c", "text-halo-color": "rgba(239,228,198,0.9)", "text-halo-width": 1.2 } },
+      { id: "sea-names", type: "symbol", source: "seas", layout: { "text-field": ["get", "name"], "text-font": ["OpenHistorical Italic"], "text-max-width": 6,
+          "text-size": ["interpolate", ["linear"], ["zoom"], 4, 11, 7, 17], "text-letter-spacing": 0.2 }, paint: { "text-color": "#4a6f70" } },
+      { id: "city-dots", type: "circle", source: "cities", minzoom: 4.6, paint: { "circle-radius": 2.6, "circle-color": "#fbf5e4", "circle-stroke-color": "#2a2118", "circle-stroke-width": 1.4 } },
+      { id: "city-names", type: "symbol", source: "cities", minzoom: 4.6, layout: { "text-field": ["get", "name"], "text-font": ["OpenHistorical Italic"], "text-size": 12.5,
+          "text-anchor": "left", "text-offset": [0.5, 0], "text-optional": true },
+        paint: { "text-color": "#2a2118", "text-halo-color": "rgba(246,238,215,0.9)", "text-halo-width": 1.3 } },
+      slotLabels("A"), slotLabels("B"),
+    ],
+  };
+}
+
+let map = null, styleOK = false, DATA = null, slotNow = "A", sceneNow = null, pendingScene = null, styleLoaded = null;
+try {
+  map = new maplibregl.Map({
+    container: "map", style: makeStyle(), bounds: BOUNDS_ALL, fitBoundsOptions: { padding: 20 }, maxBounds: [[-14, 31], [38, 62]],
+    minZoom: 3, maxZoom: 8.5, dragRotate: false, pitchWithRotate: false, renderWorldCopies: false, attributionControl: false,
+  });
+  styleLoaded = new Promise(r => map.once("load", r));
+  map.touchZoomRotate.disableRotation();
+  map.keyboard.disableRotation();
+  map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
+  // start with the credits folded into the (i) button: MapLibre opens them once by itself, so close them that first time
+  const credits = map.getContainer().querySelector(".maplibregl-ctrl-attrib");
+  const fold = obs => { if (credits.classList.contains("maplibregl-compact-show")) { credits.classList.remove("maplibregl-compact-show"); obs.disconnect(); } };
+  const watch = new MutationObserver((_, obs) => fold(obs));
+  watch.observe(credits, { attributes: true, attributeFilter: ["class"] });
+  fold(watch);
+} catch (e) {
+  map = null;
+  $("#mapwrap").classList.add("no-map");
+}
+const setup = (async () => {
+    DATA = await window.MAP_DATA;
+    if (!map || !DATA) return;
+    await styleLoaded;
+    map.getSource("land").setData(DATA.land);
+    map.getSource("sea").setData(DATA.sea);
+    map.getSource("waterlines").setData(DATA.waterlines);
+    map.getSource("rivers").setData(DATA.rivers);
+    map.getSource("lakes").setData(DATA.lakes);
+    // fine engraved hatching on the sea
+    const W = 4, H = 4, px = new Uint8Array(W * H * 4);
+    for (let x = 0; x < W; x++) { const o = x * 4; px[o] = 70; px[o + 1] = 100; px[o + 2] = 98; px[o + 3] = 38; }
+    map.addImage("hatch", { width: W, height: H, data: px });
+    map.addLayer({ id: "sea-hatch", type: "fill", source: "sea", paint: { "fill-pattern": "hatch" } }, "waterlines");
+    styleOK = true;
+    // the game started without the map: catch up with the borders it should be showing
+    if (pendingScene) { const p = pendingScene; pendingScene = null; showScene(p, true); }
+})();
+// don't hold the game hostage to a slow map: start after 6 seconds regardless
+const mapReady = Promise.race([setup, wait(6000)]);
+
+function sceneFeatures(name) {
+  const sc = DATA.scenes[name];
+  const polys = [], labels = [];
+  for (const x of sc.f) {
+    const F = DATA.feats[x.id], pal = PAL[x.r] || PAL.foreign, fc = pal[(x.c || 0) % pal.length];
+    const u = x.r === "sardinia" || UNION.includes(F.full) ? 1 : 0;
+    polys.push({ type: "Feature", properties: { fc, bc: shade(fc, x.r === "foreign" ? 0.82 : 0.68), u, lvl: x.lvl }, geometry: F.g });
+    if (!NO_LABEL.has(F.full)) labels.push({ type: "Feature", properties: { n: F.n.replace(" (Papal)", ""), a: F.a }, geometry: { type: "Point", coordinates: F.l } });
+  }
+  return [FC(polys), FC(labels)];
+}
+function setSlot(X, on) { for (const [k, [p, v]] of Object.entries(SLOT_PAINT)) map.setPaintProperty(k + "-" + X, p, on ? v : 0); }
+// cross-fade from the borders on screen to another year's
+async function showScene(name, instant) {
+  updateCartouche(name);
+  if (!styleOK) { pendingScene = name; return; }
+  if (!DATA.scenes[name] || name === sceneNow) return;
+  const next = slotNow === "A" ? "B" : "A";
+  const [polys, labels] = sceneFeatures(name);
+  map.getSource("s" + next).setData(polys);
+  map.getSource("l" + next).setData(labels);
+  sceneNow = name;
+  setSlot(next, true); setSlot(slotNow, false);
+  slotNow = next;
+  if (!instant) await wait(reduceMotion ? 100 : 1150);
+}
+function updateCartouche(name) {
+  const t = SCENE_TITLE[name]; if (!t) return;
+  $("#cartouche").hidden = false;
+  $("#cart-t").textContent = t[0]; $("#cart-sub").textContent = t[1];
+  const c = name.slice(0, 2), present = DATA && DATA.scenes[name] ? new Set(DATA.scenes[name].f.map(x => x.r)) : null;
+  const rows = LEGEND[c].filter(([r]) => !present || present.has(r));
+  const lg = $("#legend"), folded = lg.classList.contains("folded");
+  lg.hidden = false;
+  lg.innerHTML = `<h4>Key<button id="lg-fold" aria-label="${folded ? "Show" : "Hide"} the key">${folded ? "show ▴" : "hide ▾"}</button></h4>` +
+    rows.map(([r, l]) => `<div class="row"><i style="background:${PAL[r][0]};box-shadow:inset 0 0 0 2px ${shade(PAL[r][0], .68)}"></i>${l}</div>`).join("") +
+    (c === "it" || (present && (present.has("north") || present.has("reich"))) ? `<div class="row"><i class="ln"></i>${c === "it" ? "Borders of Sardinia, then Italy" : "Borders of the union led by Prussia"}</div>` : "");
+  $("#lg-fold").onclick = () => { lg.classList.toggle("folded"); updateCartouche(name); };
+}
+// how much of the finished nation is united so far, by area
+function unity(c, name) {
+  if (!DATA || !DATA.scenes[name]) return null;
+  const area = (scene, test) => DATA.scenes[scene].f.filter(test).reduce((a, x) => a + DATA.feats[x.id].a, 0);
+  if (c === "it") return Math.min(1, area(name, x => x.r === "sardinia") / area("it1870", x => x.r === "sardinia"));
+  const sc = DATA.scenes[name], uni = sc.f.find(x => UNION.includes(DATA.feats[x.id].full));
+  const have = uni ? DATA.feats[uni.id].a : area(name, x => x.r === "prussia");
+  return Math.min(1, have / area("de1871", x => DATA.feats[x.id].full === "German Reich"));
+}
+const pad = () => { const r = map.getContainer().getBoundingClientRect(); return { top: Math.min(80, r.height * .16), bottom: Math.min(60, r.height * .1), left: Math.min(50, r.width * .06), right: Math.min(50, r.width * .06) }; };
+function fly(bounds, ms = 1400) {
+  if (!map) return Promise.resolve();
+  return new Promise(res => {
+    const t = setTimeout(res, ms + 400);
+    map.once("moveend", () => { clearTimeout(t); res(); });
+    map.fitBounds(bounds, { padding: pad(), duration: reduceMotion ? 0 : ms, essential: true });
+  });
+}
+$("#zin").onclick = () => map && map.zoomIn();
+$("#zout").onclick = () => map && map.zoomOut();
+
+// an eight-pointed compass rose, engraved style
+(function compass() {
+  const P = (r, a) => [(r * Math.sin(a)).toFixed(1), (-r * Math.cos(a)).toFixed(1)].join(",");
+  let s = '<circle r="40" fill="rgba(248,241,223,.92)" stroke="#3b2e22" stroke-width="1.3"/><circle r="34" fill="none" stroke="#3b2e22" stroke-width=".6"/>';
+  for (let k = 0; k < 32; k++) { const a = k * Math.PI / 16; s += `<path d="M${P(34, a)}L${P(k % 4 ? 36 : 39, a)}" stroke="#3b2e22" stroke-width=".7"/>`; }
+  for (let k = 0; k < 8; k++) {
+    const a = k * Math.PI / 4, r = k % 2 ? 24 : 46, w = k % 2 ? 5 : 7;
+    const dark = k === 0 ? "#7f2a19" : "#3b2e22", light = k === 0 ? "#b0402a" : "#f7efdc";
+    s += `<path d="M0,0L${P(r, a)}L${P(w, a - Math.PI / 4)}Z" fill="${dark}"/><path d="M0,0L${P(r, a)}L${P(w, a + Math.PI / 4)}Z" fill="${light}" stroke="#3b2e22" stroke-width=".5"/>`;
+  }
+  $("#compass").innerHTML = s + '<circle r="2.4" fill="#c39a3e" stroke="#3b2e22" stroke-width=".6"/>';
+})();
+
+let toastT;
+function toast(msg, ms = 3200) { const t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), ms); }
+
+/* ===================== Pins ===================== */
+const pins = {};
+for (const ch of ALL) {
+  const el = document.createElement("button");
+  el.className = "pin"; el.hidden = true;
+  el.setAttribute("aria-label", `${ch.title} (${ch.pin.label})`);
+  el.innerHTML = `<span class="ico">${ICON[ch.pin.kind]}</span><span class="lbl">${esc(ch.pin.label)}</span>`;
+  el.onclick = e => { e.stopPropagation(); openChapter(ch.c, ch.i, true); };
+  pins[ch.id] = el;
+  if (map) new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat(ch.pin.at).addTo(map);
+}
+
+/* ===================== Advisor pop-up ===================== */
+const adv = $("#adv"), advText = $("#adv-text"), askAgain = $("#ask-again");
+let talkQ = null;
+function talk(lines, onDone) {
+  talkQ = { lines, i: 0, onDone, typing: null };
+  askAgain.hidden = true;
+  adv.classList.remove("out"); adv.hidden = false;
+  document.body.classList.add("adv-open");
+  showLine();
+}
+function showLine() {
+  const q = talkQ, [who, text] = q.lines[q.i], a = ADV[who];
+  $("#adv-img").src = a.img; $("#adv-img").alt = `Portrait of ${a.name}`;
+  $("#adv-who").innerHTML = `${esc(a.name)}<small>${esc(a.role)}</small>`;
+  $("#adv-count").textContent = q.lines.length > 1 ? `${q.i + 1} of ${q.lines.length}` : "";
+  const last = q.i === q.lines.length - 1;
+  $("#adv-next").textContent = last ? (q.onDone ? "Got it ✓" : "Close ✓") : "Next ▸";
+  const full = plain(text);
+  clearInterval(q.typing);
+  if (reduceMotion) { advText.textContent = full; return; }
+  // the words appear as if spoken
+  let n = 0; advText.textContent = "";
+  q.typing = setInterval(() => { n += 2; advText.textContent = full.slice(0, n); if (n >= full.length) { clearInterval(q.typing); q.typing = null; } }, 16);
+}
+$("#adv-next").onclick = () => {
+  const q = talkQ; if (!q) return;
+  if (q.typing) { clearInterval(q.typing); q.typing = null; advText.textContent = plain(q.lines[q.i][1]); return; }
+  if (q.i < q.lines.length - 1) { q.i++; showLine(); return; }
+  closeTalk();
+  if (q.onDone) q.onDone();
+};
+function closeTalk(silent) {
+  if (!talkQ && adv.hidden) return;
+  talkQ = null;
+  document.body.classList.remove("adv-open");
+  if (silent || reduceMotion) { adv.hidden = true; return; }
+  adv.classList.add("out");
+  setTimeout(() => { if (!talkQ) adv.hidden = true; }, 300);
+}
+function offerAgain(ch) {
+  const a = ADV[ch.talk[ch.talk.length - 1][0]];
+  askAgain.innerHTML = `<img src="${a.img}" alt="">Hear ${esc(a.short)} again`;
+  askAgain.hidden = false;
+  askAgain.onclick = () => talk(ch.talk, () => offerAgain(ch));
+}
+
+/* ===================== Glossary pop-ups ===================== */
+const gtip = $("#gtip");
+function showTip(el) {
+  const k = el.dataset.term;
+  gtip.innerHTML = `<b>${esc(k.replace(/\b\w/g, c => c.toUpperCase()))}</b>${esc(GLOSS[k])}`;
+  gtip.hidden = false;
+  const r = el.getBoundingClientRect(), w = gtip.offsetWidth, h = gtip.offsetHeight;
+  gtip.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + "px";
+  gtip.style.top = (r.top - h - 8 > 8 ? r.top - h - 8 : r.bottom + 8) + "px";
+}
+const hideTip = () => { gtip.hidden = true; };
+document.addEventListener("mouseover", e => { const d = e.target.closest("dfn[data-term]"); d ? showTip(d) : hideTip(); });
+document.addEventListener("focusin", e => { const d = e.target.closest("dfn[data-term]"); d ? showTip(d) : hideTip(); });
+document.addEventListener("click", e => { const d = e.target.closest("dfn[data-term]"); d ? showTip(d) : hideTip(); });
+addEventListener("scroll", hideTip, true);
+
+/* ===================== Chrome ===================== */
+let viewing = null; // the chapter on screen
+const panel = $("#panel");
+function refreshChrome() {
+  $("#tabs").innerHTML = ORDER.map(c => {
+    const C = CAMPAIGNS[c], n = C.chapters.length;
+    const dots = C.chapters.map((ch, i) => `<i class="${chDone(ch) ? "done" : i === S.prog[c] && (S.cur === c) ? "now" : ""}"></i>`).join("");
+    return `<button class="tab" data-c="${c}" aria-pressed="${S.cur === c}">${C.flag}${C.name}<span class="pips" aria-hidden="true">${dots}</span></button>`;
+  }).join("");
+  $("#tabs").querySelectorAll(".tab").forEach(b => b.onclick = () => { if (S.name) goCampaign(b.dataset.c); });
+  for (const ch of ALL) {
+    const p = pins[ch.id], here = viewing && viewing.id === ch.id;
+    p.hidden = ch.c !== S.cur || ch.i > S.prog[ch.c];
+    p.classList.toggle("done", chDone(ch));
+    p.classList.toggle("now", !chDone(ch));
+    p.classList.toggle("viewing", !!here);
+  }
+  $("#pts-n").textContent = points();
+}
+function setYear(y) { $("#yr").textContent = y || "—"; }
+function setUnity(c, name) {
+  const u = unity(c, name);
+  $("#unity-l").textContent = c === "it" ? "Italy united" : "Germany united";
+  $("#unity-n").textContent = u == null ? "—" : Math.round(u * 100) + "%";
+  $("#unity-bar").style.width = u == null ? "0" : (u * 100).toFixed(1) + "%";
+}
+function bump(id) { const s = $(id); s.classList.remove("bump"); void s.offsetWidth; s.classList.add("bump"); }
+const lastScene = ch => ch.after ? ch.after[ch.after.length - 1] : ch.scene;
+
+/* ===================== Chapters ===================== */
+let busy = false;
+function goCampaign(c) {
+  if (busy) return;
+  closeTalk(true);
+  S.cur = c; save();
+  if (S.done[c]) return campaignEnd(c);
+  openChapter(c, S.prog[c], true);
+}
+
+async function openChapter(c, i, fromUser) {
+  if (busy) return;
+  const ch = CAMPAIGNS[c].chapters[i];
+  if (i > S.prog[c]) { toast("Finish the chapters before this one first."); return; }
+  S.cur = c; save();
+  viewing = ch;
+  closeTalk(true); askAgain.hidden = true;
+  const sc = decided(ch) ? lastScene(ch) : ch.scene;
+  showScene(sc);
+  setUnity(c, sc); setYear(ch.yr);
+  fly(ch.focus);
+  refreshChrome();
+  renderChapter(ch);
+  if (innerWidth <= 980 && fromUser) panel.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+  if (!S.heard[ch.id]) setTimeout(() => talk(ch.talk, () => { S.heard[ch.id] = true; save(); renderChapter(ch); offerAgain(ch); }), reduceMotion ? 0 : 700);
+  else offerAgain(ch);
+}
+
+function renderChapter(ch) {
+  const C = CAMPAIGNS[ch.c], res = S.results[ch.id], heard = S.heard[ch.id];
+  const lastAdv = ADV[ch.talk[ch.talk.length - 1][0]];
+  const opts = ch.options.map((o, k) => {
+    let cls = "opt", extra = "";
+    if (res) {
+      const mine = res.pick === k;
+      cls += mine ? " sel" : o.best ? "" : " dim";
+      if (mine || o.best) extra = `<span class="why">${esc(o.why)}</span><span class="tags">${o.best ? '<span class="tag hist">✓ What really happened</span>' : ""}${mine ? `<span class="tag you">Your choice</span><span class="tag pts">+${o.pts} Prestige</span>` : ""}</span>`;
+    }
+    return `<button class="${cls}" data-k="${k}" ${res || !heard ? "disabled" : ""}><span class="key">${"ABC"[k]}</span>${esc(o.t)}${extra}</button>`;
+  }).join("");
+  panel.innerHTML = `<div class="panel-inner">
+    <div class="ev-head">
+      <div class="eyebrow"><span class="chip">${C.name} · Chapter ${ch.i + 1} of ${C.chapters.length}</span><span class="chip">${esc(ch.when)}</span></div>
+      <h2>${esc(ch.title)}</h2>
+      <p class="place">${esc(ch.place)}</p>
+    </div>
+    <div class="ev-body">
+      <div class="story">${ch.brief.map(p => `<p>${gl(p)}</p>`).join("")}</div>
+      <section class="decision">
+        <div class="decision-h">${ICON.scroll}<h3>Your Decision</h3><span class="pts">${res ? `${res.pts} / 10 Prestige` : "up to 10 Prestige"}</span></div>
+        <div class="decision-in">
+          ${heard ? "" : `<div class="locked"><img src="${lastAdv.img}" alt="">Listen to your advisor first. Click “Next” in the pop-up on the map.</div>`}
+          <p class="prompt">${esc(ch.ask)}</p>
+          <div class="opts ${heard ? "" : "wait"}">${opts}</div>
+          ${res ? `<div class="history"><h4>What really happened</h4><p>${gl(ch.history)}</p></div>` : ""}
+          ${res && ch.quote ? `<blockquote>${esc(ch.quote.text)}<cite>— ${esc(ch.quote.cite)}</cite></blockquote>` : ""}
+        </div>
+      </section>
+      ${res && ch.journal ? journalHTML(ch) : ""}
+    </div>
+    <div class="next-bar" id="nextbar"></div>
+  </div>`;
+  panel.querySelectorAll(".opt:not(:disabled)").forEach(b => b.onclick = () => decide(ch, +b.dataset.k));
+  if (res && ch.journal) wireJournal(ch);
+  renderNext(ch);
+}
+
+async function decide(ch, k) {
+  if (decided(ch) || busy) return;
+  const o = ch.options[k];
+  S.results[ch.id] = { pick: k, pts: o.pts }; save();
+  bump("#stat-pts"); toast(`+${o.pts} Prestige`, 1800);
+  refreshChrome();
+  renderChapter(ch);
+  setTimeout(() => { const h = panel.querySelector(".history"); h && h.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" }); }, 60);
+  talk([[o.who, o.say]], () => offerAgain(ch));
+  if (ch.after) {
+    busy = true;
+    await wait(reduceMotion ? 0 : 1200);
+    for (let s = 0; s < ch.after.length; s++) {
+      if (ch.changes && ch.changes[s]) toast(ch.changes[s], 3600);
+      await showScene(ch.after[s]);
+      setUnity(ch.c, ch.after[s]); bump("#stat-unity");
+      if (s < ch.after.length - 1) await wait(reduceMotion ? 0 : 2400);
+    }
+    busy = false;
+  }
+}
+
+function journalHTML(ch) {
+  return `<section class="journal">
+    <h4>${ICON.pen.replace("<svg", '<svg width="18" height="18" style="vertical-align:-2px;margin-right:6px"')}Notebook</h4>
+    <p>${esc(ch.journal)}</p>
+    <textarea id="jtext" aria-label="Your answer" placeholder="Write at least ${JOURNAL_MIN} words…">${esc(S.journals[ch.id] || "")}</textarea>
+    <div class="jmeta"><span id="jcount"></span><span>+10 Prestige</span></div>
+  </section>`;
+}
+function wireJournal(ch) {
+  const ta = $("#jtext"), cnt = $("#jcount");
+  const show = () => { const n = words(ta.value); cnt.innerHTML = journalOk(ch) ? `<span class="ok">✓ ${n} words, saved</span>` : `${n} / ${JOURNAL_MIN} words`; };
+  ta.addEventListener("input", () => {
+    const was = journalOk(ch);
+    S.journals[ch.id] = ta.value; save(); show();
+    if (journalOk(ch) !== was) { refreshChrome(); renderNext(ch); if (journalOk(ch)) { bump("#stat-pts"); toast("+10 Prestige", 1600); } }
+  });
+  show();
+}
+
+function renderNext(ch) {
+  const nb = $("#nextbar"); if (!nb) return;
+  const C = CAMPAIGNS[ch.c], last = ch.i === C.chapters.length - 1;
+  let todo = "";
+  if (!S.heard[ch.id]) todo = "Listen to your advisor.";
+  else if (!decided(ch)) todo = "Make your decision to continue.";
+  else if (!journalOk(ch)) todo = "Write in your notebook to continue.";
+  const can = !todo;
+  nb.innerHTML = last
+    ? `<span class="todo">${todo || (S.done[ch.c] ? "Campaign complete." : "The last chapter!")}</span><button class="btn gold big" id="go" ${can ? "" : "disabled"}>${S.done[ch.c] ? "See the results" : "Complete the campaign ★"}</button>`
+    : `<span class="todo">${todo || "Next: " + esc(C.chapters[ch.i + 1].title)}</span><button class="btn big" id="go" ${can ? "" : "disabled"}>Next chapter →</button>`;
+  $("#go").onclick = () => advance(ch);
+}
+
+async function advance(ch) {
+  if (busy || !chDone(ch)) return;
+  const C = CAMPAIGNS[ch.c];
+  if (ch.i === C.chapters.length - 1) { S.done[ch.c] = true; save(); return campaignEnd(ch.c); }
+  const nx = C.chapters[ch.i + 1];
+  if (S.prog[ch.c] < nx.i) { S.prog[ch.c] = nx.i; save(); }
+  openChapter(ch.c, nx.i);
+}
+
+/* ===================== Campaign end & finale ===================== */
+function recapHTML(c) {
+  return `<ul class="recap">${CAMPAIGNS[c].chapters.map(ch => {
+    const r = S.results[ch.id], o = r && ch.options[r.pick];
+    return `<li class="${o && o.best ? "hit" : ""}"><b>${ch.i + 1}. ${esc(ch.title)} · ${r ? r.pts : 0}/10</b>${o ? esc(o.t) : "Not decided"}</li>`;
+  }).join("")}</ul>`;
+}
+function campaignEnd(c) {
+  const C = CAMPAIGNS[c], other = ORDER.find(k => k !== c), O = CAMPAIGNS[other];
+  viewing = null; closeTalk(true); askAgain.hidden = true;
+  S.cur = c; save();
+  showScene(C.final); setUnity(c, C.final); setYear(C.chapters[C.chapters.length - 1].yr);
+  fly(C.chapters[0].focus);
+  refreshChrome();
+  const pts = C.chapters.reduce((a, ch) => a + (S.results[ch.id] ? S.results[ch.id].pts : 0) + (ch.journal && journalOk(ch) ? 10 : 0), 0);
+  const max = C.chapters.reduce((a, ch) => a + 10 + (ch.journal ? 10 : 0), 0);
+  const both = S.done.it && S.done.de;
+  panel.innerHTML = `<div class="panel-inner">
+    <div class="ev-head"><div class="eyebrow"><span class="chip">${C.name} · ${C.years}</span><span class="chip">Campaign complete</span></div>
+      <h2>${c === "it" ? "Italy Is United!" : "The German Empire Is Born!"}</h2><p class="place">${esc(C.name)} earned you ${pts} of ${max} Prestige</p></div>
+    <div class="ev-body legacy">
+      ${C.legacy.map(p => `<p>${gl(p)}</p>`).join("")}
+      <h3>Your decisions</h3>
+      ${recapHTML(c)}
+      <p class="turn-in">Click any chapter's marker on the map to look back at it.</p>
+    </div>
+    <div class="next-bar">${both
+      ? `<span class="todo">You have unified both nations!</span><button class="btn gold big" id="go">See your final results ★</button>`
+      : `<span class="todo">One more nation to unify.</span><button class="btn big" id="go">${O.flag.replace('class="flag"', 'class="flag" style="width:22px;height:15px"')} Now unify ${O.name} →</button>`}</div>
+  </div>`;
+  panel.scrollTop = 0;
+  $("#go").onclick = () => both ? finale() : goCampaign(other);
+  talk([[c === "it" ? "garibaldi" : "bismarck", c === "it" ? "Italy is one nation at last! Thank you, friend. Now go home and rest, as I did on Caprera." : "It is done. Germany is united, under Prussia's leadership. Now we must keep the peace we have won."]]);
+  if (!reduceMotion) confetti(c === "it" ? ["#2f7d45", "#fbf7ee", "#c8352a", "#c39a3e"] : ["#1d1d1d", "#fbf7ee", "#c8352a", "#c39a3e"]);
+}
+
+function rank(p) { const r = p / maxPts; return r >= .85 ? ["Statesman", 3] : r >= .65 ? ["Minister", 2] : r >= .4 ? ["Diplomat", 1] : ["Clerk", 0]; }
+function medalSVG(rk, n) {
+  const star = (cx, cy) => { const p = []; for (let k = 0; k < 10; k++) { const r = k % 2 ? 3 : 7, a = -Math.PI / 2 + k * Math.PI / 5; p.push((cx + r * Math.cos(a)).toFixed(1) + "," + (cy + r * Math.sin(a)).toFixed(1)); } return `<polygon points="${p.join(" ")}" fill="#6b4508"/>`; };
+  const stars = Array.from({ length: n }, (_, k) => star((k - (n - 1) / 2) * 17, -14)).join("");
+  return `<svg class="medal" viewBox="-80 -162 160 240" role="img" aria-label="${rk} medal">
+    <defs><linearGradient id="m-rim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff0bd"/><stop offset=".45" stop-color="#e2ad3c"/><stop offset="1" stop-color="#8f600e"/></linearGradient>
+    <linearGradient id="m-field" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b37d18"/><stop offset=".55" stop-color="#e3b44b"/><stop offset="1" stop-color="#f6dc93"/></linearGradient>
+    <clipPath id="m-rib"><path d="M-34,-152 L34,-152 L34,-96 L0,-78 L-34,-96Z"/></clipPath></defs>
+    <g clip-path="url(#m-rib)"><rect x="-34" y="-152" width="12" height="80" fill="#2f7d45"/><rect x="-22" y="-152" width="11" height="80" fill="#fbf7ee"/><rect x="-11" y="-152" width="11" height="80" fill="#c8352a"/>
+    <rect x="0" y="-152" width="34" height="27" fill="#1d1d1d"/><rect x="0" y="-125" width="34" height="27" fill="#fbf7ee"/><rect x="0" y="-98" width="34" height="27" fill="#c8352a"/></g>
+    <circle cy="-76" r="6.5" fill="none" stroke="url(#m-rim)" stroke-width="3.2"/><circle r="70" fill="url(#m-rim)"/><circle r="60" fill="url(#m-field)" stroke="rgba(110,70,5,.55)" stroke-width="1.2"/>
+    ${stars}<g font-family="IM Fell English, Georgia, serif" text-anchor="middle"><text y="20" font-size="21" fill="rgba(255,240,190,.75)">${rk}</text><text y="19" font-size="21" fill="#5a3b06">${rk}</text>
+    <text y="36" font-size="8.5" fill="#5a3b06" font-family="Nunito, sans-serif" letter-spacing="1">1834 – 1871</text></g></svg>`;
+}
+function finale() {
+  viewing = null; closeTalk(true); askAgain.hidden = true;
+  showScene("de1871"); setYear(1871);
+  fly([[-2, 37], [24, 56]]);
+  const p = points(), [rk, n] = rank(p), notes = ALL.filter(ch => ch.journal && journalOk(ch)).length;
+  const hits = ALL.filter(ch => { const r = S.results[ch.id]; return r && ch.options[r.pick].best; }).length;
+  panel.innerHTML = `<div class="panel-inner finale">
+    <div class="ev-head"><div class="eyebrow" style="justify-content:center"><span class="chip">1834–1871 · Both nations united</span></div>
+      <h2>Well done, ${rk} ${esc(S.name || "")}!</h2><p class="place">You helped forge two new nations.</p></div>
+    <div class="ev-body">
+      ${medalSVG(rk, n)}
+      <div class="bigstats"><div><b>${p}</b><span>of ${maxPts} Prestige</span></div><div><b>${hits}/${ALL.length}</b><span>choices matched history</span></div><div><b>${notes}</b><span>notebook answers</span></div></div>
+      <div class="legacy">
+        <h3>Two roads to one nation</h3>
+        <p><b>Italy</b> was united by a mix of diplomacy, foreign help, a popular hero and votes. <b>Germany</b> was united by one powerful state, Prussia, through three planned wars. In both, a strong kingdom (Sardinia, Prussia) led the way, and the old enemy, Austria, was pushed out.</p>
+        <section class="journal" style="text-align:left">
+          <h4>${ICON.pen.replace("<svg", '<svg width="18" height="18" style="vertical-align:-2px;margin-right:6px"')}Final notebook question</h4>
+          <p>${esc(FINAL_Q)}</p>
+          <textarea id="ftext" aria-label="Your final answer" placeholder="Write at least ${JOURNAL_MIN} words…">${esc(S.final || "")}</textarea>
+          <div class="jmeta"><span id="fcount"></span><span>+10 Prestige</span></div>
+        </section>
+      </div>
+      <div class="row-btns" style="justify-content:center;margin-top:18px"><button class="btn gold big" id="dl">⬇ Download my notebook (PDF)</button></div>
+      <p class="turn-in">Save the file, then turn it in to your teacher.</p>
+      <div class="row-btns" style="justify-content:center"><button class="btn ghost small" data-c="it">Review Italy</button><button class="btn ghost small" data-c="de">Review Germany</button><button class="btn ghost small" id="restart">Start over</button></div>
+    </div>
+  </div>`;
+  panel.scrollTop = 0;
+  const ta = $("#ftext"), cnt = $("#fcount");
+  const show = () => { const n = words(ta.value); cnt.innerHTML = finalOk() ? `<span class="ok">✓ ${n} words, saved</span>` : `${n} / ${JOURNAL_MIN} words`; };
+  ta.addEventListener("input", () => { const was = finalOk(); S.final = ta.value; save(); show(); if (finalOk() !== was) { refreshChrome(); if (finalOk()) bump("#stat-pts"); } });
+  show();
+  $("#dl").onclick = downloadNotebook;
+  $("#restart").onclick = restart;
+  panel.querySelectorAll("[data-c]").forEach(b => b.onclick = () => campaignEnd(b.dataset.c));
+  refreshChrome();
+  if (!reduceMotion) confetti(["#2f7d45", "#c8352a", "#1d1d1d", "#c39a3e", "#fbf7ee"]);
+}
+function confetti(colors) {
+  for (let i = 0; i < 90; i++) {
+    const c = document.createElement("div");
+    c.className = "confetti";
+    c.style.left = Math.random() * 100 + "vw";
+    c.style.background = colors[i % colors.length];
+    c.style.animationDuration = 2.4 + Math.random() * 2.2 + "s";
+    c.style.animationDelay = Math.random() * .8 + "s";
+    c.style.borderRadius = Math.random() > .5 ? "50%" : "2px";
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 6000);
+  }
+}
+
+// The finished notebook as a PDF file the student turns in. The PDF library loads only when needed.
+let pdfLib = null;
+const loadPdfLib = () => pdfLib || (pdfLib = new Promise((res, rej) => {
+  const sc = document.createElement("script");
+  sc.src = "vendor/jspdf/jspdf.umd.min.js";
+  sc.onload = () => res(window.jspdf.jsPDF);
+  sc.onerror = () => { pdfLib = null; rej(new Error("PDF library didn't load")); };
+  document.head.appendChild(sc);
+}));
+// the PDF's built-in fonts only cover Western European letters; drop anything else (like emoji)
+const WIN_ANSI = "€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ";
+const pdfText = t => String(t).replace(/[^\n\x20-\x7e\xa0-\xff]/g, c => WIN_ANSI.includes(c) ? c : "");
+async function downloadNotebook() {
+  const btn = $("#dl");
+  btn.disabled = true; btn.textContent = "Making your PDF…";
+  try {
+    const JsPDF = await loadPdfLib();
+    const doc = new JsPDF({ unit: "pt", format: "letter" });
+    const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 54;
+    let y = M;
+    const need = h => { if (y + h > H - M) { doc.addPage(); y = M; } };
+    const write = (text, { font = "helvetica", style = "normal", size = 11, color = [42, 33, 24], gap = 4 } = {}) => {
+      doc.setFont(font, style); doc.setFontSize(size); doc.setTextColor(...color);
+      for (const line of doc.splitTextToSize(pdfText(text), W - 2 * M)) { need(size * 1.35); doc.text(line, M, y + size); y += size * 1.35; }
+      y += gap;
+    };
+    const p = points(), [rk] = rank(p);
+    write("Forging Nations: My Notebook", { font: "times", style: "bold", size: 26, gap: 2 });
+    write("The Unification of Italy and Germany, 1834–1871", { font: "times", style: "italic", size: 13, color: [110, 95, 76], gap: 10 });
+    write(`${S.name || "Student"}  ·  ${rk}  ·  ${p} of ${maxPts} Prestige  ·  ${new Date().toLocaleDateString()}`, { style: "bold", gap: 14 });
+    for (const c of ORDER) {
+      need(60);
+      write(CAMPAIGNS[c].name + ", " + CAMPAIGNS[c].years, { font: "times", style: "bold", size: 19, gap: 6 });
+      for (const ch of CAMPAIGNS[c].chapters) {
+        need(70);
+        doc.setDrawColor(220, 203, 166); doc.line(M, y, W - M, y); y += 12;
+        write(`${ch.i + 1}. ${ch.title}`, { font: "times", style: "bold", size: 15, gap: 1 });
+        write(`${ch.place} · ${ch.when}`, { size: 9, color: [110, 95, 76], gap: 6 });
+        const r = S.results[ch.id], o = r && ch.options[r.pick];
+        write(`${ch.ask}`, { style: "bold", size: 10.5, gap: 2 });
+        write(o ? `My choice: ${o.t} (${r.pts}/10${o.best ? ", matched history" : ""})` : "Not decided yet", { size: 10.5, gap: 6 });
+        if (ch.journal) {
+          write(ch.journal, { style: "bold", size: 10.5, gap: 3 });
+          write(S.journals[ch.id] || "(no answer)", { font: "times", style: "italic", size: 12, color: [29, 45, 107], gap: 10 });
+        }
+      }
+    }
+    need(80);
+    doc.setDrawColor(220, 203, 166); doc.line(M, y, W - M, y); y += 12;
+    write("Final question", { font: "times", style: "bold", size: 15, gap: 3 });
+    write(FINAL_Q, { style: "bold", size: 10.5, gap: 3 });
+    write(S.final || "(no answer)", { font: "times", style: "italic", size: 12, color: [29, 45, 107], gap: 10 });
+    const pages = doc.getNumberOfPages();
+    for (let k = 1; k <= pages; k++) {
+      doc.setPage(k); doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(140, 125, 105);
+      doc.text(pdfText(`${S.name || "Student"} · Forging Nations notebook · page ${k} of ${pages}`), W / 2, H - 28, { align: "center" });
+    }
+    doc.save(`${(S.name || "").replace(/[^\p{L}\p{N}\- ]+/gu, "").trim() || "Student"} - Forging Nations notebook.pdf`);
+    btn.textContent = "✓ Downloaded. Download again";
+  } catch (e) {
+    toast("Couldn't make the PDF. Try again in a moment.");
+    btn.textContent = "⬇ Download my notebook (PDF)";
+  }
+  btn.disabled = false;
+}
+function restart() {
+  if (!confirm("Start over? Your decisions and notebook answers will be erased.")) return;
+  S = blank(); save(); location.reload();
+}
+
+/* ===================== Start ===================== */
+const intro = $("#intro"), nameIn = $("#name-in");
+function campCard(c) {
+  const C = CAMPAIGNS[c], n = C.chapters.length, got = C.chapters.filter(chDone).length;
+  const status = S.done[c] ? "✓ Complete. Review it" : got ? `Continue: chapter ${S.prog[c] + 1} of ${n}` : `${n} chapters`;
+  return `<button class="camp" data-c="${c}">
+    <span class="faces">${C.faces.map(f => `<img src="${ADV[f].img}" alt="">`).join("")}</span>
+    <span class="txt"><b>${C.flag}Unify ${C.name}</b><span>${C.years} · ${esc(C.pitch)}</span><em>${status} →</em></span></button>`;
+}
+function showIntro() {
+  intro.hidden = false;
+  if (!nameIn.value) nameIn.value = S.name || "";
+  $("#intro-choose").innerHTML = ORDER.map(campCard).join("");
+  $("#intro-choose").querySelectorAll(".camp").forEach(b => b.onclick = () => start(b.dataset.c));
+  const r = $("#resume");
+  if (S.name && Object.keys(S.results).length) {
+    r.hidden = false;
+    r.innerHTML = `Welcome back, ${esc(S.name)}! Pick up where you left off. <button id="fresh">Start over instead</button>`;
+    $("#fresh").onclick = restart;
+  }
+  if (document.activeElement !== nameIn) setTimeout(() => nameIn.focus(), 300);
+}
+async function start(c) {
+  const n = nameIn.value.trim();
+  if (!n) { nameIn.focus(); nameIn.style.borderColor = "#9e2a1e"; nameIn.placeholder = "Sign your name first!"; return; }
+  S.name = n; save();
+  intro.hidden = true;
+  panel.innerHTML = `<div class="panel-inner"><div class="ev-head"><h2>Unrolling the map…</h2></div></div>`;
+  await mapReady;
+  if (S.done.it && S.done.de && c === S.cur) return finale();
+  goCampaign(c);
+}
+nameIn.addEventListener("keydown", e => { if (e.key === "Enter") start(S.cur || "it"); });
+
+refreshChrome();
+showIntro();
+});
+</script>
+</html>
