@@ -103,8 +103,13 @@
   .no-map .map-off { display: grid; place-content: center; gap: 8px; position: absolute; inset: 0; padding: 24px; text-align: center; color: var(--muted); font-weight: 700; font-size: 15px; background: var(--paper); }
   .no-map .map-off b { font-family: var(--serif); font-weight: 400; font-size: 24px; color: var(--ink); }
 
+  /* map title and key share the top-left corner, clear of the advisor along the bottom */
+  .map-tl {
+    position: absolute; left: 18px; top: 18px; z-index: 3; max-width: calc(100% - 110px);
+    display: flex; flex-direction: column; align-items: flex-start; gap: 14px; pointer-events: none;
+  }
   .cartouche {
-    position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 3; pointer-events: none; text-align: center;
+    position: relative; pointer-events: none; text-align: center;
     background: rgba(248,241,223,.94); padding: 6px 26px 7px; border: 1px solid #3b2e22;
     box-shadow: 0 0 0 3px rgba(248,241,223,.94), 0 0 0 4px #8a6e45, 0 4px 12px rgba(60,40,10,.25);
     border-radius: 2px; transition: opacity .4s;
@@ -112,12 +117,12 @@
   .cartouche::before, .cartouche::after { content: "❦"; position: absolute; top: 50%; transform: translateY(-50%); color: #8a6e45; font-size: 15px; }
   .cartouche::before { left: 7px; transform: translateY(-50%) scaleX(-1); }
   .cartouche::after { right: 7px; }
-  .cartouche b { display: block; font-family: var(--sc); font-weight: 400; font-size: 21px; letter-spacing: .06em; line-height: 1.1; white-space: nowrap; }
+  .cartouche b { display: block; font-family: var(--sc); font-weight: 400; font-size: 21px; letter-spacing: .06em; line-height: 1.1; }
   .cartouche small { display: block; font-family: var(--serif); font-style: italic; font-size: 13px; color: var(--muted); }
 
   .compass { position: absolute; right: 18px; top: 18px; width: 62px; height: 62px; z-index: 3; pointer-events: none; filter: drop-shadow(0 2px 3px rgba(40,25,10,.3)); }
   .legend {
-    position: absolute; left: 18px; bottom: 18px; z-index: 3;
+    pointer-events: auto;
     background: rgba(248,241,223,.95); border: 1px solid #8a6e45; box-shadow: 0 0 0 3px rgba(248,241,223,.95), 0 0 0 4px #3b2e22, var(--shadow);
     padding: 7px 11px; font-size: 12.5px; line-height: 1.65; max-width: 260px; border-radius: 2px;
   }
@@ -200,7 +205,6 @@
   }
   .ask-again img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; object-position: 50% 25%; border: 2px solid var(--gold); filter: sepia(.35); }
   .ask-again:hover { background: #fff; }
-  body.adv-open .legend { display: none; }
 
   /* ---------- Panel: the event window ---------- */
   .panel { background: var(--paper-2); border-left: 3px solid var(--gold); box-shadow: inset 1px 0 0 #6b5226; overflow-y: auto; overscroll-behavior: contain; position: relative; }
@@ -380,7 +384,8 @@
     .panel { border-left: 0; border-top: 3px solid var(--gold); overflow: visible; }
     .legend { display: none; }
     .compass { width: 44px; height: 44px; top: 14px; right: 14px; }
-    .cartouche { top: 14px; padding: 4px 22px 5px; }
+    .map-tl { left: 14px; top: 14px; max-width: calc(100% - 84px); }
+    .cartouche { padding: 4px 22px 5px; }
     .cartouche b { font-size: 17px; }
     .advisor { position: fixed; left: 8px; right: 8px; bottom: 8px; width: auto; grid-template-columns: 96px 1fr; }
     .frame { width: 90px; height: 120px; }
@@ -402,7 +407,7 @@
     /* the year is on every chapter's heading, so the bar keeps only the two scores */
     .stat.year { display: none; }
     .meter { width: 56px; margin-top: 3px; }
-    .cartouche { left: 14px; transform: none; max-width: calc(100% - 78px); padding: 4px 14px 5px; text-align: left; }
+    .cartouche { padding: 4px 14px 5px; text-align: left; }
     .cartouche::before, .cartouche::after { display: none; }
     .cartouche b { white-space: normal; font-size: 15px; }
     .panel { padding-bottom: 64px; }
@@ -430,9 +435,11 @@
   <section class="mapwrap" id="mapwrap" aria-label="Map">
     <div id="map"></div>
     <div class="map-off"><b>The map couldn't load.</b>You can still play the whole game. Reload the page later to see the map.</div>
-    <div class="cartouche" id="cartouche" hidden><small id="cart-sub"></small><b id="cart-t"></b></div>
+    <div class="map-tl">
+      <div class="cartouche" id="cartouche" hidden><small id="cart-sub"></small><b id="cart-t"></b></div>
+      <div class="legend" id="legend" hidden></div>
+    </div>
     <svg class="compass" id="compass" viewBox="-50 -50 100 100" aria-hidden="true"></svg>
-    <div class="legend" id="legend" hidden></div>
     <div class="map-ui zoom">
       <button id="zin" title="Zoom in" aria-label="Zoom in">+</button>
       <button id="zout" title="Zoom out" aria-label="Zoom out">−</button>
