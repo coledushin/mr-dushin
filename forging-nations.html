@@ -9,10 +9,11 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Caveat:wght@500;700&display=swap">
 <link rel="stylesheet" href="vendor/maplibre-gl/maplibre-gl.css">
 <script src="vendor/maplibre-gl/maplibre-gl.js" defer></script>
-<link rel="preload" href="unification-map.json" as="fetch" crossorigin>
+<link rel="preload" href="unification-map.json?v=3" as="fetch" crossorigin>
 <script>
-  // borders for every year of the game load alongside the page and fill in when ready
-  window.MAP_DATA = fetch("unification-map.json").then(r => r.ok ? r.json() : null).catch(() => null);
+  // borders for every year of the game load alongside the page and fill in when ready;
+  // bump ?v= whenever the map file changes, so browsers don't keep an old copy
+  window.MAP_DATA = fetch("unification-map.json?v=3").then(r => r.ok ? r.json() : null).catch(() => null);
 </script>
 <style>
   :root {
@@ -317,6 +318,51 @@
   .next-bar { margin: 22px 24px 0; padding-top: 18px; border-top: 2px dashed var(--line); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .next-bar .todo { color: var(--muted); font-size: 14px; font-weight: 700; flex: 1; min-width: 160px; }
 
+  .methods { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px !important; font-size: 13.5px !important; font-weight: 700; color: var(--muted); }
+  .methods i { font-style: normal; font-size: 12.5px; color: #fff; background: var(--c); border-radius: 4px; padding: 2px 8px; }
+  .compare { margin-top: 12px; padding: 12px 16px; border-radius: 6px; background: #eef1f6; border: 1px solid #c3cbdb; border-left: 5px solid var(--blue); }
+  .compare h4 { margin: 0 0 4px; font-family: var(--sc); font-weight: 400; font-size: 18px; color: var(--blue); }
+  .compare p { margin: 0 0 6px; font-size: 16px; }
+  .linkbtn { background: none; border: 0; padding: 0; color: var(--blue); font-weight: 800; font-size: 14.5px; text-decoration: underline; text-underline-offset: 3px; }
+
+  /* comparison chart */
+  .cmp-btn { border: 1px solid var(--gold); background: rgba(195,154,62,.18); color: var(--gold-hi); border-radius: 8px; padding: 6px 12px; font-weight: 800; font-size: 14px; white-space: nowrap; }
+  .cmp-btn:hover { background: rgba(195,154,62,.32); color: #fff; }
+  .letter.sheet { width: min(900px, 100%); }
+  .letter .close { position: absolute; right: 18px; top: 16px; }
+  .ledger { display: grid; margin: 10px 0 4px; border: 1px solid #8a6e45; border-radius: 4px; overflow: hidden; background: var(--card); text-align: left; }
+  .lg-row { display: grid; grid-template-columns: 170px 1fr 1fr; border-top: 1px solid var(--line); }
+  .lg-row:first-child { border-top: 0; }
+  .lg-row > * { padding: 9px 12px; }
+  .lg-row h5 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 16.5px; line-height: 1.25; background: #f3e8cc; }
+  .lg-row h5 small { display: block; font-family: "Nunito", sans-serif; font-size: 11.5px; color: var(--muted); font-weight: 700; }
+  .lg-head { background: var(--wood); color: var(--gold-hi); }
+  .lg-head b { font-family: var(--sc); font-weight: 400; font-size: 19px; display: flex; align-items: center; gap: 8px; }
+  .lg-head .flag { width: 24px; height: 16px; box-shadow: 0 0 0 1px rgba(0,0,0,.5); border-radius: 2px; }
+  .cell { font-size: 14.5px; line-height: 1.4; border-left: 1px solid var(--line); }
+  .locked-c { color: #9c8c74; font-style: italic; font-size: 13.5px; }
+  .mbar { margin-bottom: 6px; font-size: 12.5px; font-weight: 700; position: relative; padding-right: 22px; }
+  .mbar i { display: block; height: 9px; border-radius: 99px; min-width: 9px; margin-top: 1px; }
+  .mbar b { position: absolute; right: 0; bottom: -3px; font-size: 13px; }
+  .finale .lg-row { grid-template-columns: 1fr 1fr; }
+  .finale .lg-row h5 { grid-column: 1 / -1; }
+  .finale .lg-head > span { display: none; }
+  .sort { display: grid; gap: 8px; text-align: left; }
+  .sq { padding: 10px 12px; border-radius: 6px; background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--line); }
+  .sq.right { border-left-color: var(--green); }
+  .sq.wrong { border-left-color: var(--red); }
+  .sq p { margin: 0 0 7px; font-weight: 700; font-size: 15.5px; }
+  .sbtn { display: flex; gap: 6px; }
+  .sbtn button { flex: 1; padding: 6px 4px; border-radius: 5px; border: 1px solid #a88a54; background: linear-gradient(#fffaf0, #f4e8cb); font-weight: 800; font-size: 14px; }
+  .sbtn button:hover:not(:disabled) { border-color: var(--red); }
+  .sbtn button:disabled { cursor: default; opacity: .55; }
+  .sbtn button.ans { opacity: 1; background: var(--green-soft); border-color: var(--green); color: var(--green); }
+  .sbtn button.sel:not(.ans) { opacity: 1; background: var(--red-soft); border-color: var(--red); color: var(--red); }
+  .sq small { display: block; margin-top: 6px; font-size: 13.5px; color: var(--muted); font-weight: 600; }
+  .sort-score { font-weight: 800; text-align: center; margin: 4px 0 0; }
+  .note.big-q { background: #eef1f6; border-color: #c3cbdb; border-left: 5px solid var(--blue); font-size: 15.5px; }
+  .ask-again img + img { margin-left: -14px; }
+
   /* campaign choice cards */
   .choose { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0 6px; }
   .camp {
@@ -406,6 +452,12 @@
     .stat b { font-size: 15px; }
     /* the year is on every chapter's heading, so the bar keeps only the two scores */
     .stat.year { display: none; }
+    .cmp-btn { padding: 5px 9px; }
+    .cmp-btn span { display: none; }
+    .lg-row { grid-template-columns: 1fr 1fr; }
+    .lg-row h5 { grid-column: 1 / -1; }
+    .lg-head > span { display: none; }
+    .letter .close { right: 12px; top: 10px; }
     .meter { width: 56px; margin-top: 3px; }
     .cartouche { padding: 4px 14px 5px; text-align: left; }
     .cartouche::before, .cartouche::after { display: none; }
@@ -424,6 +476,7 @@
   <a class="home" href="index.html" title="Back to Mr. Dushin's Classroom">←<span> Classroom</span></a>
   <div class="brand">Forging Nations</div>
   <nav class="tabs" id="tabs" aria-label="Campaigns"></nav>
+  <button class="cmp-btn" id="cmp" title="Compare Italy and Germany">⚖<span> Compare</span></button>
   <div class="stats">
     <div class="stat year"><b id="yr">—</b>Year</div>
     <div class="stat" id="stat-unity"><b id="unity-n">—</b><div class="meter"><i id="unity-bar"></i></div><span id="unity-l">United</span></div>
@@ -460,6 +513,16 @@
 </div>
 <div class="gtip" id="gtip" hidden></div>
 
+<div class="overlay" id="ledger-ov" hidden>
+  <div class="letter sheet" role="dialog" aria-labelledby="ledger-h">
+    <button class="btn ghost small close" id="ledger-close" aria-label="Close the comparison chart">✕ Close</button>
+    <p class="dateline">Your comparison chart</p>
+    <h1 id="ledger-h">Italy and Germany: Two Roads</h1>
+    <p>The chart fills in as you play. Look for what was <b>different</b> and what was <b>the same</b>.</p>
+    <div id="ledger-body"></div>
+  </div>
+</div>
+
 <div class="overlay" id="intro">
   <div class="letter" role="dialog" aria-labelledby="intro-h">
     <p class="dateline">Europe, in the middle of the nineteenth century</p>
@@ -471,6 +534,7 @@
       <div><span class="n">II.</span><b>Decide</b>Choose what to do, then see what really happened. Watch the map change.</div>
       <div><span class="n">III.</span><b>Write</b>Answer a few questions in your notebook and turn it in at the end.</div>
     </div>
+    <p class="note big-q"><b>The big question:</b> Italy and Germany both became nations around 1870, but they got there in <em>very different ways</em>. As you play, your <b>⚖ Compare</b> chart fills in. By the end, you should be able to explain how the two unifications were different, and how they were alike.</p>
     <p class="note"><b>How Prestige works:</b> you earn the most points for choices that really would have worked at the time. That is not always the same as the fairest or kindest choice. Be ready to think about that!</p>
     <div class="sign-row">
       <label for="name-in">Sign your name
@@ -943,11 +1007,74 @@ de: {
 },
 };
 const ORDER = ["it", "de"];
-const ALL = ORDER.flatMap(c => CAMPAIGNS[c].chapters.map((ch, i) => Object.assign(ch, { c, i })));
-const FINAL_Q = "Compare the two unifications. Which mattered more, the leaders' clever decisions or war? Use one example from Italy and one from Germany.";
+// how each step moved unification along, and how it compares with the other country
+const METHODS = {
+  army: ["Its own army", "#8c2316"], foreign: ["Foreign armies' help", "#3f5f8f"], diplomacy: ["Diplomacy & deals", "#9a7424"],
+  people: ["Ordinary people (revolts, volunteers, votes)", "#3d6b45"], economy: ["Trade", "#6a4a7a"],
+};
+const META = {
+  it1: { tags: ["people"], compare: "Germany had its own revolution in 1848, and it failed too. After 1848, people in both countries began to look to a strong kingdom, not to revolutions, to lead the way." },
+  it2: { tags: ["diplomacy"], compare: "Cavour and Bismarck were both practical politicians who planned step by step. The difference: Cavour needed powerful friends, while Bismarck could count on Prussia's own big army." },
+  it3: { tags: ["diplomacy", "foreign"], compare: "Cavour paid France with land to get its army to fight for Sardinia. Bismarck never needed another country's army to fight for Prussia. He only needed other countries to stay out." },
+  it4: { tags: ["foreign", "people"], compare: "In Italy, ordinary people voted in plebiscites to join the new kingdom. In Germany, nobody voted on unification: kings, treaties and wars decided it." },
+  it5: { tags: ["people"], compare: "Germany had no Garibaldi. No volunteer hero conquered part of Germany. German unification was run from the top, by Bismarck, the king and the Prussian army." },
+  it6: { tags: ["army", "people"], compare: "In Italy, a popular hero handed his conquests to the king. In Germany, the king and his minister were in charge from start to finish." },
+  it7: { tags: ["foreign"], compare: "This is the same war you fight as Prussia in the Germany campaign. For Prussia it was a planned victory. Italy lost its own battles and won Venetia only because its ally won." },
+  it8: { tags: ["army", "foreign"], compare: "Italy's last step happened because France was busy losing a war to Prussia. The two unifications finished in the same war, in 1870–71." },
+  de1: { tags: ["economy"], compare: "Italy had nothing like the Zollverein. Trade tied the German states to Prussia long before any war. In Italy, war, deals and votes did the work." },
+  de2: { tags: ["people"], compare: "Italy's revolutions of 1848 failed too. In both countries the people's attempt failed, and afterward a strong kingdom took over the job." },
+  de3: { tags: ["army"], compare: "Cavour governed with a parliament and a constitution. Bismarck ignored his parliament when it got in the way. Germany was united by power, not by votes." },
+  de4: { tags: ["army", "diplomacy"], compare: "Prussia won this war with its own army; Austria came along mostly so it couldn't object. Italy's wars against Austria needed the help of France's army." },
+  de5: { tags: ["diplomacy"], compare: "Both Cavour and Bismarck made secret deals with Napoleon III. Cavour wanted France's army to fight for him. Bismarck only wanted France to stay out of the way." },
+  de6: { tags: ["army"], compare: "In 1859 Sardinia needed 200,000 French soldiers to beat Austria. In 1866 Prussia beat Austria by itself, in just seven weeks." },
+  de7: { tags: ["diplomacy"], compare: "Cavour used a similar trick in 1859 when he got Austria to declare war first. Both leaders wanted the other side to look like the attacker." },
+  de8: { tags: ["army", "diplomacy"], compare: "Italy became a kingdom, with Rome as its capital, partly through votes. Germany became an empire, proclaimed by princes and generals in an enemy's palace." },
+};
+const ALL = ORDER.flatMap(c => CAMPAIGNS[c].chapters.map((ch, i) => Object.assign(ch, { c, i }, META[ch.id])));
+const BY_ID = Object.fromEntries(ALL.map(ch => [ch.id, ch]));
+// the comparison chart: each cell fills in once the chapter named beside it has been played
+const LEDGER = [
+  { q: "Which state led the way?",
+    it: ["it2", "The Kingdom of Sardinia (Piedmont): a small kingdom, but the only Italian state with a constitution."],
+    de: ["de1", "The Kingdom of Prussia: a large state with a strong army and economy."] },
+  { q: "Who were the key leaders?",
+    it: ["it5", "Several, with different ideas: Mazzini (revolutionary), Cavour (diplomat), Garibaldi (soldier-hero) and King Victor Emmanuel II."],
+    de: ["de3", "Mostly one man, Bismarck, working for King Wilhelm I, with General Moltke running the army."] },
+  { q: "What did ordinary people do?",
+    it: ["it4", "A lot: they rebelled, joined Garibaldi's volunteers and voted in plebiscites to join."],
+    de: ["de2", "Very little: their 1848 parliament failed, and unification came “from above,” from kings, ministers and generals."] },
+  { q: "Did it need foreign help?",
+    it: ["it7", "Yes. France's army beat Austria in 1859, and Prussia's victories won Venetia (1866) and Rome (1870)."],
+    de: ["de5", "No army help. Bismarck only made sure other powers stayed out, and used Italy against Austria."] },
+  { q: "Whom did it have to push out?",
+    it: ["it8", "Austria (from Lombardy and Venetia) and the Pope (from his Papal States and Rome)."],
+    de: ["de6", "Austria (out of German affairs in 1866), then France (defeated in 1870–71)."] },
+  { q: "How did it end?",
+    it: ["it8", "Rome was taken in 1870 and became the capital of the Kingdom of Italy, with a king and an elected parliament."],
+    de: ["de8", "The German Empire was proclaimed at Versailles in 1871. The Kaiser and his Chancellor held most of the power."] },
+  { q: "What problems were left over?",
+    it: ["it8", "A rich north and a poor south, many local dialects, and a Pope who refused to accept the new kingdom."],
+    de: ["de8", "Not a democracy, and France wanted revenge for Alsace–Lorraine."] },
+];
+// the finale's sorting challenge
+const SORT = [
+  { t: "One strong state's own army won most of the wars.", a: "de", why: "Prussia's army beat Denmark, Austria and France. Italy relied on France and Prussia." },
+  { t: "A volunteer army of Redshirts conquered half the country.", a: "it", why: "Garibaldi's Thousand took Sicily and Naples in 1860." },
+  { t: "People voted in plebiscites to join the new nation.", a: "it", why: "Central Italy, the south, Venetia and Rome all voted. No one voted on German unification." },
+  { t: "Austria was pushed out.", a: "both", why: "Austria lost Lombardy and Venetia in Italy, and its leadership of Germany in 1866." },
+  { t: "It needed a foreign army to beat Austria.", a: "it", why: "Sardinia needed France in 1859. Prussia beat Austria on its own." },
+  { t: "The new nation was proclaimed in the palace of a defeated enemy.", a: "de", why: "The German Empire was proclaimed at Versailles, in France." },
+  { t: "A clever chief minister made careful, practical plans.", a: "both", why: "Cavour in Italy, Bismarck in Germany." },
+  { t: "A customs union tied the states together through trade first.", a: "de", why: "Prussia's Zollverein began in 1834." },
+  { t: "The head of the Catholic Church refused to accept it.", a: "it", why: "Pope Pius IX called himself a “prisoner in the Vatican.”" },
+  { t: "A kingdom with its own king led the way.", a: "both", why: "Sardinia in Italy, Prussia in Germany." },
+];
+const SORT_LBL = { it: "Italy", de: "Germany", both: "Both" };
+const FINAL_Q = "What was the biggest difference between how Italy and Germany were unified? Give one piece of evidence from each country.";
 
 const ICON = {
-  battle: '<svg viewBox="0 0 24 24" fill="none" stroke="#3b2e22" stroke-width="2.2" stroke-linecap="round"><path d="M4 4l11 11M20 4L9 15M13 17l4 4M11 17l-4 4M15 15l2-2M9 15l-2-2"/></svg>',
+  // two crossed swords: straight blade, cross-guard, grip and pommel
+  battle: (sw => `<svg viewBox="0 0 24 24">${sw}<g transform="matrix(-1 0 0 1 24 0)">${sw}</g></svg>`)('<path d="M3 3l2.1.9 10.5 10.5-1.3 1.3L3.9 5.1z" fill="#3b2e22"/><path d="M12.9 17.1l4.2-4.2" stroke="#3b2e22" stroke-width="1.8" stroke-linecap="round"/><path d="M15 15l3.8 3.8" stroke="#3b2e22" stroke-width="1.6" stroke-linecap="round"/><circle cx="19.8" cy="19.8" r="1.3" fill="#3b2e22"/>'),
   treaty: '<svg viewBox="0 0 24 24" fill="none" stroke="#3b2e22" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M9 10h7M9 14h7M9 18h4"/></svg>',
   city: '<svg viewBox="0 0 24 24" fill="#3b2e22"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21l1.6-7L2 9.2l7.1-.6z"/></svg>',
   scroll: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h11a2 2 0 0 1 0 4h-1v10a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-1h11v1a2 2 0 0 0 2 2"/><path d="M8 4a2 2 0 0 0-2 2v11"/></svg>',
@@ -956,7 +1083,7 @@ const ICON = {
 
 /* ===================== State ===================== */
 const KEY = "forging-nations-v1";
-const blank = () => ({ name: "", cur: null, prog: { it: 0, de: 0 }, results: {}, journals: {}, heard: {}, done: { it: false, de: false }, final: "" });
+const blank = () => ({ name: "", cur: null, prog: { it: 0, de: 0 }, results: {}, journals: {}, heard: {}, done: { it: false, de: false }, final: "", sort: {} });
 let S = blank();
 try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.results) S = Object.assign(blank(), s); } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
@@ -967,8 +1094,9 @@ const journalOk = ch => !ch.journal || words(S.journals[ch.id]) >= JOURNAL_MIN;
 const decided = ch => !!S.results[ch.id];
 const chDone = ch => decided(ch) && journalOk(ch);
 const finalOk = () => words(S.final) >= JOURNAL_MIN;
-const maxPts = ALL.reduce((a, ch) => a + 10 + (ch.journal ? 10 : 0), 0) + 10;
-const points = () => ALL.reduce((a, ch) => a + (S.results[ch.id] ? S.results[ch.id].pts : 0) + (ch.journal && journalOk(ch) ? 10 : 0), 0) + (finalOk() ? 10 : 0);
+const sortRight = () => SORT.filter((q, k) => S.sort[k] === q.a).length;
+const maxPts = ALL.reduce((a, ch) => a + 10 + (ch.journal ? 10 : 0), 0) + 10 + SORT.length;
+const points = () => ALL.reduce((a, ch) => a + (S.results[ch.id] ? S.results[ch.id].pts : 0) + (ch.journal && journalOk(ch) ? 10 : 0), 0) + (finalOk() ? 10 : 0) + sortRight();
 
 /* ===================== Helpers ===================== */
 const $ = s => document.querySelector(s);
@@ -1259,8 +1387,8 @@ function closeTalk(silent) {
   setTimeout(() => { if (!talkQ) adv.hidden = true; }, 300);
 }
 function offerAgain(ch) {
-  const a = ADV[ch.talk[ch.talk.length - 1][0]];
-  askAgain.innerHTML = `<img src="${a.img}" alt="">Hear ${esc(a.short)} again`;
+  const who = [...new Set(ch.talk.map(l => l[0]))];
+  askAgain.innerHTML = who.map(w => `<img src="${ADV[w].img}" alt="">`).join("") + (who.length > 1 ? "Hear advisors again" : `Hear ${esc(ADV[who[0]].short)} again`);
   askAgain.hidden = false;
   askAgain.onclick = () => talk(ch.talk, () => offerAgain(ch));
 }
@@ -1364,7 +1492,10 @@ function renderChapter(ch) {
           ${heard ? "" : `<div class="locked"><img src="${lastAdv.img}" alt="">Listen to your advisor first. Click “Next” in the pop-up on the map.</div>`}
           <p class="prompt">${esc(ch.ask)}</p>
           <div class="opts ${heard ? "" : "wait"}">${opts}</div>
-          ${res ? `<div class="history"><h4>What really happened</h4><p>${gl(ch.history)}</p></div>` : ""}
+          ${res ? `<div class="history"><h4>What really happened</h4><p>${gl(ch.history)}</p>
+            <p class="methods"><span>How this moved unification:</span>${ch.tags.map(m => `<i style="--c:${METHODS[m][1]}">${METHODS[m][0]}</i>`).join("")}</p></div>
+            <div class="compare"><h4>⚖ Compare with ${ch.c === "it" ? "Germany" : "Italy"}</h4><p>${gl(ch.compare)}</p>
+            <button class="linkbtn" data-cmp>Open your comparison chart →</button></div>` : ""}
           ${res && ch.quote ? `<blockquote>${esc(ch.quote.text)}<cite>— ${esc(ch.quote.cite)}</cite></blockquote>` : ""}
         </div>
       </section>
@@ -1373,6 +1504,7 @@ function renderChapter(ch) {
     <div class="next-bar" id="nextbar"></div>
   </div>`;
   panel.querySelectorAll(".opt:not(:disabled)").forEach(b => b.onclick = () => decide(ch, +b.dataset.k));
+  panel.querySelectorAll("[data-cmp]").forEach(b => b.onclick = openLedger);
   if (res && ch.journal) wireJournal(ch);
   renderNext(ch);
 }
@@ -1463,6 +1595,7 @@ function campaignEnd(c) {
       <h2>${c === "it" ? "Italy Is United!" : "The German Empire Is Born!"}</h2><p class="place">${esc(C.name)} earned you ${pts} of ${max} Prestige</p></div>
     <div class="ev-body legacy">
       ${C.legacy.map(p => `<p>${gl(p)}</p>`).join("")}
+      <div class="row-btns"><button class="btn ghost" data-cmp>⚖ Open the comparison chart</button></div>
       <h3>Your decisions</h3>
       ${recapHTML(c)}
       <p class="turn-in">Click any chapter's marker on the map to look back at it.</p>
@@ -1473,6 +1606,7 @@ function campaignEnd(c) {
   </div>`;
   panel.scrollTop = 0;
   $("#go").onclick = () => both ? finale() : goCampaign(other);
+  panel.querySelectorAll("[data-cmp]").forEach(b => b.onclick = openLedger);
   talk([[c === "it" ? "garibaldi" : "bismarck", c === "it" ? "Italy is one nation at last! Thank you, friend. Now go home and rest, as I did on Caprera." : "It is done. Germany is united, under Prussia's leadership. Now we must keep the peace we have won."]]);
   if (!reduceMotion) confetti(c === "it" ? ["#2f7d45", "#fbf7ee", "#c8352a", "#c39a3e"] : ["#1d1d1d", "#fbf7ee", "#c8352a", "#c39a3e"]);
 }
@@ -1493,7 +1627,7 @@ function medalSVG(rk, n) {
 }
 function finale() {
   viewing = null; closeTalk(true); askAgain.hidden = true;
-  showScene("de1871"); setYear(1871);
+  showScene("de1871"); setYear(1871); setUnity("de", "de1871");
   fly([[-2, 37], [24, 56]]);
   const p = points(), [rk, n] = rank(p), notes = ALL.filter(ch => ch.journal && journalOk(ch)).length;
   const hits = ALL.filter(ch => { const r = S.results[ch.id]; return r && ch.options[r.pick].best; }).length;
@@ -1505,7 +1639,11 @@ function finale() {
       <div class="bigstats"><div><b>${p}</b><span>of ${maxPts} Prestige</span></div><div><b>${hits}/${ALL.length}</b><span>choices matched history</span></div><div><b>${notes}</b><span>notebook answers</span></div></div>
       <div class="legacy">
         <h3>Two roads to one nation</h3>
-        <p><b>Italy</b> was united by a mix of diplomacy, foreign help, a popular hero and votes. <b>Germany</b> was united by one powerful state, Prussia, through three planned wars. In both, a strong kingdom (Sardinia, Prussia) led the way, and the old enemy, Austria, was pushed out.</p>
+        <p><b>Italy</b> was united by a mix of diplomacy, foreign armies, a popular hero and the votes of ordinary people. <b>Germany</b> was united “from above” by one powerful state, Prussia, through three planned wars. In both, a strong kingdom (Sardinia, Prussia) led the way, and Austria was pushed out.</p>
+        ${ledgerHTML()}
+        <h3>Italy, Germany, or both?</h3>
+        <p>Sort each statement. +1 Prestige for each correct answer.</p>
+        <div class="sort" id="sort"></div>
         <section class="journal" style="text-align:left">
           <h4>${ICON.pen.replace("<svg", '<svg width="18" height="18" style="vertical-align:-2px;margin-right:6px"')}Final notebook question</h4>
           <p>${esc(FINAL_Q)}</p>
@@ -1523,12 +1661,56 @@ function finale() {
   const show = () => { const n = words(ta.value); cnt.innerHTML = finalOk() ? `<span class="ok">✓ ${n} words, saved</span>` : `${n} / ${JOURNAL_MIN} words`; };
   ta.addEventListener("input", () => { const was = finalOk(); S.final = ta.value; save(); show(); if (finalOk() !== was) { refreshChrome(); if (finalOk()) bump("#stat-pts"); } });
   show();
+  renderSort();
   $("#dl").onclick = downloadNotebook;
   $("#restart").onclick = restart;
   panel.querySelectorAll("[data-c]").forEach(b => b.onclick = () => campaignEnd(b.dataset.c));
   refreshChrome();
   if (!reduceMotion) confetti(["#2f7d45", "#c8352a", "#1d1d1d", "#c39a3e", "#fbf7ee"]);
 }
+function renderSort() {
+  const box = $("#sort"); if (!box) return;
+  box.innerHTML = SORT.map((q, k) => {
+    const ans = S.sort[k];
+    return `<div class="sq ${ans ? (ans === q.a ? "right" : "wrong") : ""}"><p>${esc(q.t)}</p><div class="sbtn">${Object.keys(SORT_LBL).map(v =>
+      `<button data-k="${k}" data-v="${v}" ${ans ? "disabled" : ""} class="${ans === v ? "sel" : ""} ${ans && q.a === v ? "ans" : ""}">${SORT_LBL[v]}</button>`).join("")}</div>
+      ${ans ? `<small>${ans === q.a ? "✓ Right." : `✗ It's ${SORT_LBL[q.a]}.`} ${esc(q.why)}</small>` : ""}</div>`;
+  }).join("") + `<p class="sort-score">${Object.keys(S.sort).length === SORT.length ? `You got ${sortRight()} of ${SORT.length}.` : ""}</p>`;
+  box.querySelectorAll("button[data-k]").forEach(b => b.onclick = () => {
+    S.sort[b.dataset.k] = b.dataset.v; save(); renderSort(); refreshChrome();
+    if (S.sort[b.dataset.k] === SORT[b.dataset.k].a) bump("#stat-pts");
+  });
+}
+
+/* ===================== Comparison chart ===================== */
+function methodBars(c) {
+  const n = {};
+  CAMPAIGNS[c].chapters.filter(decided).forEach(ch => ch.tags.forEach(m => n[m] = (n[m] || 0) + 1));
+  const rows = Object.keys(METHODS).filter(m => n[m]);
+  if (!rows.length) return `<span class="locked-c">Play ${CAMPAIGNS[c].name} chapters to see this.</span>`;
+  return rows.sort((a, b) => n[b] - n[a]).map(m => `<div class="mbar"><span>${METHODS[m][0]}</span><i style="width:${n[m] * 14}%;background:${METHODS[m][1]}"></i><b>${n[m]}</b></div>`).join("");
+}
+function ledgerHTML() {
+  const cell = ([id, text]) => decided(BY_ID[id]) ? `<div class="cell">${gl(text)}</div>`
+    : `<div class="cell locked-c">Play ${CAMPAIGNS[BY_ID[id].c].name}, chapter ${BY_ID[id].i + 1}, to fill this in.</div>`;
+  return `<div class="ledger">
+    <div class="lg-row lg-head"><span></span><b>${CAMPAIGNS.it.flag} Italy</b><b>${CAMPAIGNS.de.flag} Germany</b></div>
+    <div class="lg-row"><h5>How was it done? <small>(one mark per chapter played)</small></h5><div class="cell">${methodBars("it")}</div><div class="cell">${methodBars("de")}</div></div>
+    ${LEDGER.map(r => `<div class="lg-row"><h5>${esc(r.q)}</h5>${cell(r.it)}${cell(r.de)}</div>`).join("")}
+  </div>`;
+}
+const ledgerOv = $("#ledger-ov");
+function openLedger() {
+  $("#ledger-body").innerHTML = ledgerHTML();
+  ledgerOv.hidden = false;
+  $("#ledger-close").focus();
+}
+const closeLedger = () => { ledgerOv.hidden = true; hideTip(); };
+$("#cmp").onclick = openLedger;
+$("#ledger-close").onclick = closeLedger;
+ledgerOv.addEventListener("click", e => { if (e.target === ledgerOv) closeLedger(); });
+addEventListener("keydown", e => { if (e.key === "Escape" && !ledgerOv.hidden) closeLedger(); });
+
 function confetti(colors) {
   for (let i = 0; i < 90; i++) {
     const c = document.createElement("div");
@@ -1592,6 +1774,10 @@ async function downloadNotebook() {
     }
     need(80);
     doc.setDrawColor(220, 203, 166); doc.line(M, y, W - M, y); y += 12;
+    write("Italy, Germany, or both?", { font: "times", style: "bold", size: 15, gap: 3 });
+    write(`Score: ${sortRight()} of ${SORT.length}`, { size: 10.5, gap: 4 });
+    SORT.forEach((q, k) => write(`${S.sort[k] === q.a ? "[right]" : S.sort[k] ? "[wrong]" : "[--]"} ${q.t}  My answer: ${S.sort[k] ? SORT_LBL[S.sort[k]] : "none"}${S.sort[k] && S.sort[k] !== q.a ? ` (answer: ${SORT_LBL[q.a]})` : ""}`, { size: 10, gap: 2 }));
+    y += 8;
     write("Final question", { font: "times", style: "bold", size: 15, gap: 3 });
     write(FINAL_Q, { style: "bold", size: 10.5, gap: 3 });
     write(S.final || "(no answer)", { font: "times", style: "italic", size: 12, color: [29, 45, 107], gap: 10 });
