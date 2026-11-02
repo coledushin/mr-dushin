@@ -173,7 +173,6 @@
   /* ---------- Advisor pop-up ---------- */
   .advisor {
     position: absolute; left: 18px; bottom: 18px; z-index: 6; width: min(600px, calc(100% - 36px));
-    display: grid; grid-template-columns: 128px 1fr; align-items: end; gap: 0;
     filter: drop-shadow(0 10px 24px rgba(20,10,0,.45));
     animation: advIn .45s cubic-bezier(.2,.9,.3,1.15);
   }
@@ -181,7 +180,7 @@
   .advisor.out { animation: advOut .3s ease forwards; }
   @keyframes advOut { to { transform: translateY(30px); opacity: 0; } }
   .frame {
-    width: 120px; height: 160px; position: relative; z-index: 1;
+    flex: none; width: 120px; height: 160px; position: relative;
     border-radius: 6px; padding: 5px;
     background: linear-gradient(135deg, #f6dc94, #b7862a 35%, #f3d585 55%, #8f6418);
     box-shadow: inset 0 0 0 1px rgba(255,255,255,.4), 0 0 0 1px #4d3510;
@@ -192,13 +191,15 @@
   }
   .frame::after { content: ""; position: absolute; inset: 5px; border-radius: 3px; box-shadow: inset 0 0 18px rgba(40,20,0,.55); pointer-events: none; }
   .bubble {
-    position: relative; margin-left: -14px; padding: 12px 18px 12px 30px; min-height: 160px; display: flex; flex-direction: column;
+    display: flex; align-items: flex-start; gap: 14px; padding: 14px;
     background: linear-gradient(#fbf5e4, #f1e5c3); border: 1px solid #8a6e45; border-radius: 6px;
     box-shadow: inset 0 0 0 3px #fbf5e4, inset 0 0 0 4px rgba(138,110,69,.5);
   }
+  .say { flex: 1; min-width: 0; min-height: 160px; display: flex; flex-direction: column; }
   .bubble .who { font-family: var(--sc); font-size: 20px; line-height: 1.1; color: var(--ink); }
   .bubble .who small { display: block; font-family: "Nunito", sans-serif; font-size: 12.5px; font-weight: 700; color: var(--muted); letter-spacing: .02em; }
   .bubble p { margin: 6px 0 8px; font-size: 16.5px; line-height: 1.45; flex: 1; }
+  #adv-text { transition: min-height .28s ease; }
   .bubble .foot { display: flex; align-items: center; gap: 10px; }
   .bubble .count { font-size: 12.5px; font-weight: 800; color: var(--muted); flex: 1; }
   .ask-again {
@@ -469,11 +470,12 @@
     .map-tl { left: 14px; top: 14px; max-width: calc(100% - 84px); }
     .cartouche { padding: 4px 22px 5px; }
     .cartouche b { font-size: 17px; }
-    .advisor { position: fixed; left: 8px; right: 8px; bottom: 8px; width: auto; grid-template-columns: 96px 1fr; }
+    .advisor { position: fixed; left: 8px; right: 8px; bottom: 8px; width: auto; }
     .frame { width: 90px; height: 120px; }
-    .bubble { min-height: 120px; padding: 10px 14px 10px 26px; }
+    .bubble { gap: 12px; padding: 12px; }
+    .say { min-height: 120px; }
     .bubble p { font-size: 15.5px; }
-    body.adv-open .panel { padding-bottom: 230px; }
+    body.adv-open .panel { padding-bottom: 310px; }
     .hush { grid-column: 1; grid-row: 2; padding: 16px 16px 0; }
     /* on phones the advisor box already fills the bottom of the screen: just dim the text */
     .hush-card { display: none; }
@@ -542,11 +544,13 @@
     <div class="toast" id="toast" role="status"></div>
     <button class="ask-again" id="ask-again" hidden></button>
     <div class="advisor" id="adv" hidden role="dialog" aria-live="polite" aria-labelledby="adv-who">
-      <div class="frame"><img id="adv-img" alt=""></div>
       <div class="bubble">
-        <div class="who" id="adv-who"></div>
-        <p id="adv-text"></p>
-        <div class="foot"><span class="count" id="adv-count"></span><button class="btn small" id="adv-next">Next ▸</button></div>
+        <div class="frame"><img id="adv-img" alt=""></div>
+        <div class="say">
+          <div class="who" id="adv-who"></div>
+          <p id="adv-text"></p>
+          <div class="foot"><span class="count" id="adv-count"></span><button class="btn small" id="adv-next">Next ▸</button></div>
+        </div>
       </div>
     </div>
   </section>
@@ -1441,6 +1445,7 @@ function talk(lines, onDone, focus) {
 }
 function showLine() {
   const q = talkQ, [who, text] = q.lines[q.i], a = ADV[who];
+  if (q.i && who !== q.lines[q.i - 1][0] && !reduceMotion) $("#adv-img").animate([{ opacity: 0 }, { opacity: 1 }], { duration: 280, easing: "ease" });
   $("#adv-img").src = a.img; $("#adv-img").alt = `Portrait of ${a.name}`;
   $("#adv-who").innerHTML = `${esc(a.name)}<small>${esc(a.role)}</small>`;
   $("#adv-count").textContent = q.lines.length > 1 ? `${q.i + 1} of ${q.lines.length}` : "";
@@ -1449,8 +1454,15 @@ function showLine() {
   const full = plain(text);
   clearInterval(q.typing);
   if (reduceMotion) { advText.textContent = full; return; }
+  // make room for the whole line first, so the box eases to its new size instead of jumping as words appear
+  const from = advText.offsetHeight;
+  advText.style.transition = "none"; advText.style.minHeight = "0"; advText.textContent = full;
+  const to = advText.offsetHeight;
+  advText.textContent = ""; advText.style.minHeight = (q.i ? from : to) + "px";
+  void advText.offsetHeight;
+  advText.style.transition = ""; advText.style.minHeight = to + "px";
   // the words appear as if spoken
-  let n = 0; advText.textContent = "";
+  let n = 0;
   q.typing = setInterval(() => { n += 2; advText.textContent = full.slice(0, n); if (n >= full.length) { clearInterval(q.typing); q.typing = null; } }, 16);
 }
 $("#adv-next").onclick = () => {
