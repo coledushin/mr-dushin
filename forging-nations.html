@@ -4,16 +4,28 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Forging Nations</title>
 <link rel="icon" href="icons/crown.svg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Caveat:wght@500;700&display=swap">
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
+<script>if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));</script>
 <link rel="stylesheet" href="vendor/maplibre-gl/maplibre-gl.css">
 <script src="vendor/maplibre-gl/maplibre-gl.js" defer></script>
 <link rel="preload" href="unification-map.json?v=6" as="fetch" crossorigin>
 <script>
   // borders for every year of the game load alongside the page and fill in when ready;
   // bump ?v= whenever the map file changes, so browsers don't keep an old copy
-  window.MAP_DATA = fetch("unification-map.json?v=6").then(r => r.ok ? r.json() : null).catch(() => null);
+  window.MAP_DATA = (async () => {
+    // a slow or dropped connection gets several tries before the map gives up
+    for (let i = 0; i < 4; i++) {
+      try {
+        const stop = new AbortController(), timer = setTimeout(() => stop.abort(), 45000);
+        const r = await fetch("unification-map.json?v=6", { signal: stop.signal });
+        const data = r.ok ? await r.json() : null;
+        clearTimeout(timer);
+        if (data) return data;
+      } catch (e) {}
+      await new Promise(r => setTimeout(r, 2000 * (i + 1)));
+    }
+    return null;
+  })();
 </script>
 <style>
   :root {
@@ -1255,7 +1267,7 @@ function makeStyle() {
     paint: { "text-color": "#3a2c1e", "text-opacity": 0, "text-opacity-transition": FADE, "text-halo-color": "rgba(246,238,215,0.85)", "text-halo-width": 1.4 } });
   return {
     version: 8,
-    glyphs: "https://www.openhistoricalmap.org/map-styles/fonts/{fontstack}/{range}.pbf",
+    glyphs: new URL("vendor/glyphs/", location.href).href + "{fontstack}/{range}.pbf",
     sources: {
       land: { type: "geojson", data: EMPTY, attribution: "Natural Earth" }, sea: { type: "geojson", data: EMPTY }, waterlines: { type: "geojson", data: EMPTY },
       lakes: { type: "geojson", data: EMPTY }, rivers: { type: "geojson", data: EMPTY },
@@ -1317,7 +1329,8 @@ try {
 }
 const setup = (async () => {
     DATA = await window.MAP_DATA;
-    if (!map || !DATA) return;
+    if (!map) return;
+    if (!DATA) { $("#mapwrap").classList.add("no-map"); return; }
     await styleLoaded;
     map.getSource("land").setData(DATA.land);
     map.getSource("sea").setData(DATA.sea);
@@ -1930,10 +1943,30 @@ async function downloadNotebook() {
     doc.save(`${(S.name || "").replace(/[^\p{L}\p{N}\- ]+/gu, "").trim() || "Student"} - Forging Nations notebook.pdf`);
     btn.textContent = "✓ Downloaded. Download again";
   } catch (e) {
-    toast("Couldn't make the PDF. Try again in a moment.");
-    btn.textContent = "⬇ Download my notebook (PDF)";
+    saveTextNotebook();
+    toast("The PDF wasn't available, so your notebook saved as a text file. Turn that in instead.", 6000);
+    btn.textContent = "✓ Saved as text. Try the PDF again";
   }
   btn.disabled = false;
+}
+// the plain-text backup for when the PDF library can't load: a student can always turn something in
+function saveTextNotebook() {
+  const out = ["Forging Nations: My Notebook", `${S.name || "Student"} · ${rank(points())[0]} · ${points()} of ${maxPts} Prestige · ${new Date().toLocaleDateString()}`, ""];
+  for (const c of ORDER) {
+    out.push(`${CAMPAIGNS[c].name}, ${CAMPAIGNS[c].years}`, "");
+    for (const ch of CAMPAIGNS[c].chapters) {
+      const r = S.results[ch.id], o = r && ch.options[r.pick];
+      out.push(`${ch.i + 1}. ${ch.title}`, ch.ask, o ? `My choice: ${o.t} (${r.pts}/10)` : "Not decided yet");
+      if (ch.journal) out.push(ch.journal, S.journals[ch.id] || "(no answer)");
+      out.push("");
+    }
+  }
+  out.push(`Italy, Germany, or both? ${sortRight()} of ${SORT.length}`, "", "Final question", FINAL_Q, S.final || "(no answer)");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([out.join("\n")], { type: "text/plain" }));
+  a.download = `${(S.name || "").replace(/[^\p{L}\p{N}\- ]+/gu, "").trim() || "Student"} - Forging Nations notebook.txt`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 function restart() {
   if (!confirm("Start over? Your decisions and notebook answers will be erased.")) return;
@@ -1969,6 +2002,7 @@ async function start(c) {
   intro.hidden = true;
   panel.innerHTML = `<div class="panel-inner"><div class="ev-head"><h2>Unrolling the map…</h2></div></div>`;
   await mapReady;
+  if (!styleOK && map) toast("The map is still loading. You can keep playing.", 5000);
   if (S.done.it && S.done.de && c === S.cur) return finale();
   goCampaign(c);
 }

@@ -4,15 +4,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Corps of Discovery</title>
 <link rel="icon" href="icons/expedition.svg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=IM+Fell+English:ital@0;1&family=Caveat:wght@500;700&display=swap">
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
+<script>if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));</script>
 <link rel="stylesheet" href="vendor/maplibre-gl/maplibre-gl.css">
 <script src="vendor/maplibre-gl/maplibre-gl.js" defer></script>
 <link rel="preload" href="lewis-and-clark-map.json" as="fetch" crossorigin>
 <script>
   // map scenery (coastline, borders, rivers, territories) loads alongside the page and fills in when ready
-  window.MAP_SCENERY = fetch("lewis-and-clark-map.json").then(r => r.ok ? r.json() : null).catch(() => null);
+  window.MAP_SCENERY = (async () => {
+    // a slow or dropped connection gets several tries before the map gives up
+    for (let i = 0; i < 4; i++) {
+      try {
+        const stop = new AbortController(), timer = setTimeout(() => stop.abort(), 45000);
+        const r = await fetch("lewis-and-clark-map.json", { signal: stop.signal });
+        const data = r.ok ? await r.json() : null;
+        clearTimeout(timer);
+        if (data) return data;
+      } catch (e) {}
+      await new Promise(r => setTimeout(r, 2000 * (i + 1)));
+    }
+    return null;
+  })();
 </script>
 <style>
   :root {
@@ -861,7 +873,7 @@ function makeStyle() {
   return {
     version: 8,
     projection: { type: "globe" },
-    glyphs: "https://www.openhistoricalmap.org/map-styles/fonts/{fontstack}/{range}.pbf",
+    glyphs: new URL("vendor/glyphs/", location.href).href + "{fontstack}/{range}.pbf",
     sources: {
       land: { type: "vector", tiles: ["https://vtiles.openhistoricalmap.org/maps/osm_land/{z}/{x}/{y}.pbf"], maxzoom: 14 },
       dem: { type: "raster-dem", tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"], encoding: "terrarium",
@@ -951,6 +963,7 @@ if (map) map.once("style.load", () => {
   if (started && !traveling) drawProgress(); // the map was slow and the quest started without it
   window.MAP_SCENERY.then(scenery => {
     if (scenery) for (const k of ["base", "fills", "rivers", "borders"]) map.getSource(k).setData(scenery[k]);
+    else $("#mapwrap").classList.add("no-map");
   });
 });
 const paint = (layer, prop, value) => { if (styleOK) map.setPaintProperty(layer, prop, value); };
@@ -1553,10 +1566,26 @@ async function downloadJournal() {
     doc.save(`${(S.name || "").replace(/[^\p{L}\p{N}\- ]+/gu, "").trim() || "Student"} - Lewis and Clark journal.pdf`);
     btn.textContent = "✓ Downloaded. Download again";
   } catch (e) {
-    toast("Couldn't make the PDF. Try again in a moment.");
-    btn.textContent = "⬇ Download my journal (PDF)";
+    saveTextJournal();
+    toast("The PDF wasn't available, so your journal saved as a text file. Turn that in instead.");
+    btn.textContent = "✓ Saved as text. Try the PDF again";
   }
   btn.disabled = false;
+}
+// the plain-text backup for when the PDF library can't load: a student can always turn something in
+function saveTextJournal() {
+  const out = ["Expedition Journal: The Corps of Discovery, 1803–1806", `${S.name || "Student"} · ${rank(points())[0]} · ${points()} of ${maxPts} points · ${new Date().toLocaleDateString()}`, ""];
+  STOPS.forEach((st, i) => {
+    const r = S.results[st.id];
+    out.push(`${i + 1}. ${st.title}`, `Challenge: ${r ? `${r.pts}/10${r.summary ? " (" + r.summary + ")" : ""}` : "not completed"}`);
+    if (st.journal) out.push(st.journal, S.journals[st.id] || "(no entry)");
+    out.push("");
+  });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([out.join("\n")], { type: "text/plain" }));
+  a.download = `${(S.name || "").replace(/[^\p{L}\p{N}\- ]+/gu, "").trim() || "Student"} - Lewis and Clark journal.txt`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 function restart() {
   if (!confirm("Start the expedition over? Your answers and journal will be erased.")) return;
