@@ -9,11 +9,11 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Caveat:wght@500;700&display=swap">
 <link rel="stylesheet" href="vendor/maplibre-gl/maplibre-gl.css">
 <script src="vendor/maplibre-gl/maplibre-gl.js" defer></script>
-<link rel="preload" href="unification-map.json?v=5" as="fetch" crossorigin>
+<link rel="preload" href="unification-map.json?v=6" as="fetch" crossorigin>
 <script>
   // borders for every year of the game load alongside the page and fill in when ready;
   // bump ?v= whenever the map file changes, so browsers don't keep an old copy
-  window.MAP_DATA = fetch("unification-map.json?v=5").then(r => r.ok ? r.json() : null).catch(() => null);
+  window.MAP_DATA = fetch("unification-map.json?v=6").then(r => r.ok ? r.json() : null).catch(() => null);
 </script>
 <style>
   :root {
