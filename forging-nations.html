@@ -464,6 +464,8 @@
     .app { grid-template-columns: 1fr; grid-template-rows: auto; }
     .app > .panel { grid-column: 1; grid-row: 2; }
     .mapwrap { height: 46vh; min-height: 280px; position: sticky; top: 0; z-index: 2; }
+    /* the map stays pinned on top, so anything scrolled into view has to stop below it */
+    .panel, .history { scroll-margin-top: max(46vh, 280px); }
     .panel { border-left: 0; border-top: 3px solid var(--gold); overflow: visible; }
     .legend { display: none; }
     .compass { width: 44px; height: 44px; top: 14px; right: 14px; }
@@ -1471,19 +1473,19 @@ $("#adv-next").onclick = () => {
   if (q.i < q.lines.length - 1) { q.i++; showLine(); return; }
   closeTalk();
   if (q.onDone) q.onDone();
-};
-function closeTalk(silent) {
-  if (!talkQ && adv.hidden) return;
-  const wasFocus = talkQ && talkQ.focus;
-  talkQ = null;
-  document.body.classList.remove("adv-open");
-  $("#hush").hidden = true; $("#hush").classList.remove("now");
-  if (wasFocus && !silent) {
-    // the sidebar takes over: back to its top, with a brief glow to show where to look next
+  // the sidebar takes over: back to its top, with a brief glow to show where to look next.
+  // This comes after onDone, because redrawing the sidebar would stop a scroll already under way
+  if (q.focus) {
     panel.scrollTop = 0;
     if (innerWidth <= 980) panel.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
     panel.classList.remove("wake"); void panel.offsetWidth; panel.classList.add("wake");
   }
+};
+function closeTalk(silent) {
+  if (!talkQ && adv.hidden) return;
+  talkQ = null;
+  document.body.classList.remove("adv-open");
+  $("#hush").hidden = true; $("#hush").classList.remove("now");
   if (silent || reduceMotion) { adv.hidden = true; return; }
   adv.classList.add("out");
   setTimeout(() => { if (!talkQ) adv.hidden = true; }, 300);
