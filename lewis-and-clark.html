@@ -1322,12 +1322,21 @@ function animate(ms, frame) {
 }
 const dur = len => Math.min(5500, Math.max(1600, 600 + len * 1.4));
 const dayTicker = (a, b) => (a == null || b == null) ? () => {} : e => setDay(Math.round(a + (b - a) * e));
+// the trail line passes near each stop, not exactly through it, so the pin is nudged from the
+// start stop's exact spot to the end stop's exact spot as it travels and always lands on the dot
+const nudge = (path, d0, d1, a, b) => {
+  const p0 = at(path, d0).pt, p1 = at(path, d1).pt;
+  const o0 = [a[0] - p0[0], a[1] - p0[1]], o1 = [b[0] - p1[0], b[1] - p1[1]];
+  return (pt, e) => [pt[0] + o0[0] + (o1[0] - o0[0]) * e, pt[1] + o0[1] + (o1[1] - o0[1]) * e];
+};
 async function travel(from, to) {
   traveling = true;
   await fitPts(between(TRAIL, from.d, to.d), { ms: 800 });
   pinEl.classList.remove("landed"); pinEl.classList.add("moving");
   const tick = dayTicker(from.date && dayOf(from.date), to.date && dayOf(to.date));
-  await animate(dur(to.d - from.d), e => { const d = from.d + (to.d - from.d) * e; drawTrail(d); placePin(at(TRAIL, d).pt); tick(e); });
+  const fix = nudge(TRAIL, from.d, to.d, D[from.id], D[to.id]);
+  await animate(dur(to.d - from.d), e => { const d = from.d + (to.d - from.d) * e; drawTrail(d); placePin(fix(at(TRAIL, d).pt, e)); tick(e); });
+  placePin(D[to.id]);
   land(); traveling = false;
 }
 async function travelHome(stage, from, to) {
@@ -1336,7 +1345,9 @@ async function travelHome(stage, from, to) {
   await fitPts(stage === 1 ? [D.clatsop, D.blackfeet, D.shoshone, [-104.03, 47.98]] : path.pts, { ms: 800, maxZoom: 5.5 });
   pinEl.classList.remove("landed"); pinEl.classList.add("moving");
   const tick = dayTicker(dayOf(from.date), dayOf(to.date));
-  await animate(stage === 1 ? 5500 : 5000, e => { drawReturn(stage, e); placePin(at(path, path.len * e).pt); tick(e); });
+  const fix = nudge(path, 0, path.len, D[from.id], D[to.id]);
+  await animate(stage === 1 ? 5500 : 5000, e => { drawReturn(stage, e); placePin(fix(at(path, path.len * e).pt, e)); tick(e); });
+  placePin(D[to.id]);
   land(); traveling = false;
 }
 
