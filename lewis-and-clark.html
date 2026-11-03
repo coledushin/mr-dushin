@@ -89,6 +89,13 @@
   }
   .stat b { display: block; font-size: 17px; color: #fff; }
   .stat .short { display: none; }
+  .save-btn {
+    border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); color: #f6ecd6; border-radius: 10px;
+    padding: 6px 12px; font-weight: 800; font-size: 14px; white-space: nowrap;
+  }
+  .save-btn:hover:not(:disabled) { background: rgba(255,255,255,.18); color: #fff; }
+  .save-btn:disabled { opacity: .6; cursor: wait; }
+  .save-btn[hidden] { display: none; }
   .stat.bump b { animation: bump .6s ease; }
   @keyframes bump { 30% { transform: scale(1.35); color: var(--gold); } }
   @keyframes pulse { 50% { opacity: .45; } }
@@ -408,10 +415,10 @@
   }
   .mono::before { content: ""; position: absolute; inset: 12px 10px; border-radius: 50%; border: 1.5px solid currentColor; opacity: .45; }
   .mono::after { content: ""; position: absolute; inset: 17px 15px; border-radius: 50%; border: 1px dashed currentColor; opacity: .3; }
-  .face { width: 34px; height: 34px; border-radius: 50%; flex: none; object-fit: cover; object-position: 50% 25%; border: 2px solid var(--gold); filter: sepia(.3); }
-  .face.pic { background: #3a2c1f 50% 30% / 165% auto no-repeat; filter: sepia(.3); }
-  span.face { display: inline-grid; place-items: center; background: var(--c); color: #fff; font: 400 14px/1 var(--serif); filter: none; }
-  .face + .face { margin-left: -12px; }
+  .mug { width: 34px; height: 34px; border-radius: 50%; flex: none; object-fit: cover; object-position: 50% 25%; border: 2px solid var(--gold); filter: sepia(.3); }
+  .mug.pic { background: #3a2c1f 50% 30% / 165% auto no-repeat; filter: sepia(.3); }
+  span.mug { display: inline-grid; place-items: center; background: var(--c); color: #fff; font: 400 14px/1 var(--serif); filter: none; }
+  .mug + .mug { margin-left: -12px; }
   .say { flex: 1; min-width: 0; min-height: 150px; display: flex; flex-direction: column; }
   .bubble .who { font-family: var(--serif); font-size: 22px; line-height: 1.1; }
   .bubble .who small { display: block; font-family: "Nunito", sans-serif; font-size: 12.5px; font-weight: 700; color: var(--muted); }
@@ -442,8 +449,8 @@
     background: #2b2118; color: #f6ecd6; border-radius: 14px; padding: 16px 20px; box-shadow: var(--shadow);
   }
   .hush-card .faces { display: flex; }
-  .hush-card .face { width: 52px; height: 52px; font-size: 20px; }
-  .hush-card .face + .face { margin-left: -16px; }
+  .hush-card .mug { width: 52px; height: 52px; font-size: 20px; }
+  .hush-card .mug + .mug { margin-left: -16px; }
   .hush-card b { font-family: var(--serif); font-weight: 400; font-size: 22px; color: #f3cf7a; }
   .hush-card span { font-size: 15px; }
   .hush-card em { font-style: normal; font-weight: 800; color: #fff; }
@@ -544,6 +551,8 @@
     .stat { padding: 2px 8px; }
     .stat .long { display: none; }
     .stat .short { display: inline; }
+    .save-btn { padding: 6px 10px; }
+    .save-btn span { display: none; }
     .panel-inner { padding: 20px 16px 36px; }
     .pack-grid, .cards { grid-template-columns: 1fr; }
     .match { grid-template-columns: 1fr; }
@@ -562,6 +571,7 @@
     <div class="stat" id="stat-day"><b id="day-n">—</b><span class="long">Expedition day</span><span class="short">Day</span></div>
     <div class="stat" id="stat-pts"><b id="pts-n">0</b>Points</div>
   </div>
+  <button class="save-btn" id="save-work" hidden title="Download your journal so far, to turn in">⬇<span> Save my work</span></button>
 </header>
 
 <div class="app">
@@ -641,6 +651,8 @@ const ADV = {
   lewis:     { short: "Lewis", name: "Captain Meriwether Lewis", role: "Co-leader of the Corps of Discovery", mono: "ML", c: "#2e6b4f", img: "portraits/lewis.jpg" },
   clark:     { short: "Clark", name: "Captain William Clark", role: "Co-leader of the Corps and its mapmaker", mono: "WC", c: "#b4572e", img: "portraits/clark.jpg" },
   rush:      { short: "Dr. Rush", name: "Dr. Benjamin Rush", role: "Doctor and teacher in Philadelphia", mono: "BR", c: "#6b5a3a", img: "portraits/rush.jpg" },
+  sacagawea: { short: "Sacagawea", name: "Sacagawea", role: "Shoshone interpreter", mono: "S", c: "#7a4a2a", img: "portraits/sacagawea.jpg" },
+  york:      { short: "York", name: "York", role: "Member of the Corps, enslaved by Captain Clark", mono: "Y", c: "#5b4a8a", img: "portraits/york.jpg" },
 };
 for (const a of Object.values(ADV)) { const im = new Image(); im.onload = () => { a.ok = true; }; im.src = a.img; }
 
@@ -654,12 +666,12 @@ const STOPS = [
     "Jefferson was a scientist as well as a president. His written orders told Lewis to <strong>map</strong> the rivers and land, to <strong>record</strong> the plants, animals and weather, and to meet the <strong>Native nations</strong> along the way to talk about trade and peace.",
   ],
   talk: [
-    ["jefferson", "Welcome. I am Thomas Jefferson, President of the United States. My diplomats in Paris have just agreed to buy a huge piece of land from France, called Louisiana. Look at the map: it is the gold-colored land."],
-    ["jefferson", "Louisiana doubles the size of our country, but no American knows what is out there. So I am sending a small team of soldiers to explore it, all the way to the Pacific Ocean. I call it the Corps of Discovery."],
-    ["lewis", "I am Captain Meriwether Lewis, the President's secretary. He has asked me to lead the Corps, and I am asking my old army friend, William Clark, to lead it with me."],
-    ["jefferson", "I have written out Captain Lewis's orders. Read about them in the sidebar, then show me that you know what this mission is for."],
+    ["jefferson", "Welcome. I am Thomas Jefferson, President of the United States. We are buying a huge piece of land from France. It is called Louisiana. Look at the map: it is the gold-colored land."],
+    ["jefferson", "Louisiana doubles the size of our country. But no American knows what is out there. So I am sending a small team of soldiers to explore it, all the way to the Pacific Ocean. I call it the Corps of Discovery."],
+    ["lewis", "I am Captain Meriwether Lewis. I work for the President. He asked me to lead the Corps. I am asking my old army friend, William Clark, to lead it with me."],
+    ["jefferson", "I wrote down orders for Captain Lewis. Read about them {side}. Then show me you know what this trip is for."],
   ],
-  done: ["jefferson", "Good. Remember those orders, because you will need them. Now, Captain Lewis, off to Philadelphia. You have a great deal to learn, and a great deal to buy."],
+  done: ["jefferson", "Good. Remember those orders. You will need them. Now, Captain Lewis, go to Philadelphia. You have a lot to learn, and a lot to buy."],
   quote: { text: "The object of your mission is to explore the Missouri river… [and find] the most direct & practicable water communication across this continent for the purposes of commerce.", cite: "Jefferson's instructions to Lewis, June 20, 1803" },
   act: {
     type: "multi",
@@ -683,11 +695,11 @@ const STOPS = [
     "Then he went shopping. With no map of the West, Lewis had to guess what more than 30 people would need for two or more years in the wilderness. Everything had to fit on one boat.",
   ],
   talk: [
-    ["lewis", "Here in Philadelphia, the best scientists in America are teaching me. I am studying plants, medicine, and how to find where I am by looking at the stars."],
-    ["rush", "I am Dr. Benjamin Rush. Out West there will be no doctors, so Captain Lewis must be the doctor. I am sending along a box of my famous pills."],
-    ["lewis", "Now comes the hard part: packing. No one has made a map of the West, so I must guess what more than 30 people will need for two years. Help me fill the last crates on the boat."],
+    ["lewis", "Here in Philadelphia, the best scientists in America are teaching me. I am learning about plants and medicine. I am also learning to find where I am by looking at the stars."],
+    ["rush", "I am Dr. Benjamin Rush. Out West there will be no doctors, so Captain Lewis must be the doctor. I am sending a box of my famous pills with him."],
+    ["lewis", "Now comes the hard part: packing. No one has a map of the West. So I must guess what more than 30 people will need for two years. Help me fill the last crates, or big wooden boxes, on the boat."],
   ],
-  done: ["lewis", "The crates are packed. Next I go to Pittsburgh, where our boat is being built. I hope the builder is faster than he promised!"],
+  done: ["lewis", "The crates are packed. Next I go to Pittsburgh, where our boat is being built. I hope the builder is fast!"],
   act: {
     type: "pack", slots: 7,
     prompt: "There's only room for 7 more crates on the keelboat. What do you pack?",
@@ -715,8 +727,8 @@ const STOPS = [
     "Near Louisville, Kentucky, Clark came aboard, along with <strong>York</strong>, a man Clark enslaved, and several tough young Kentucky volunteers. On the map, the trail follows the Ohio River west to the Mississippi.",
   ],
   talk: [
-    ["lewis", "I waited six long weeks here while a slow boatbuilder finished our keelboat. She is 55 feet long. On August 31, 1803, we finally pushed off down the Ohio River."],
-    ["clark", "And I am Captain William Clark. I joined the boat near Louisville, Kentucky. I brought York, a man I held in slavery, and some tough young volunteers from Kentucky."],
+    ["lewis", "I waited six long weeks here for a slow boat builder. At last our keelboat was done. It is 55 feet long. On August 31, 1803, we set off down the Ohio River."],
+    ["clark", "I am Captain William Clark. I joined the boat in Kentucky. I brought York, a man I enslaved, and some tough young men from Kentucky."],
     ["clark", "Look at the map. Our trail follows the Ohio River west to the Mississippi. Why do you think we are traveling by river?"],
   ],
   done: ["clark", "Rivers are the roads of the West. Next we will spend the winter near St. Louis, getting our men ready."],
@@ -739,10 +751,10 @@ const STOPS = [
     "On <strong>May 14, 1804</strong>, the Corps pushed off up the Missouri River. A week later they left St. Charles, the last American town they would see for more than two years.",
   ],
   talk: [
-    ["clark", "We spent the winter here at Camp Wood, training our new soldiers. We drilled them, practiced shooting, and punished the troublemakers."],
-    ["lewis", "In March I watched in St. Louis as the American flag was raised over Upper Louisiana for the first time. That land belongs to the United States now."],
-    ["clark", "On May 14, 1804, we pushed off up the Missouri River. Soon we will pass the last American town we will see for more than two years."],
-    ["lewis", "Before we go, you should meet our team. Flip the cards in the sidebar."],
+    ["clark", "We spent the winter here at Camp Wood, training our new soldiers. They practiced marching and shooting. We punished anyone who caused trouble."],
+    ["lewis", "In March, I watched the American flag go up in St. Louis for the first time. That land belongs to the United States now."],
+    ["clark", "On May 14, 1804, we set off up the Missouri River. Soon we will pass the last American town. We will not see another one for more than two years."],
+    ["lewis", "Before we go, meet our team. Flip the cards {side}."],
   ],
   done: ["lewis", "A fine crew, and a fine dog. Now, up the Missouri!"],
   act: {
@@ -768,8 +780,8 @@ const STOPS = [
   ],
   talk: [
     ["clark", "This is a sad day. Sergeant Charles Floyd became very sick, with terrible pain in his stomach."],
-    ["lewis", "I tried every medicine I had, but nothing helped. He died today, most likely from a burst appendix. No doctor in the world could have saved him."],
-    ["clark", "We buried him on a hill above the river and named it Floyd's Bluff. What I wrote in my journal is in the sidebar."],
+    ["lewis", "I tried every medicine I had, but nothing helped. He died today. His appendix probably burst. No doctor in 1804 could have saved him."],
+    ["clark", "We buried him on a hill above the river. We named it Floyd's Bluff. You can read what I wrote in my journal {side}."],
     ["clark", "There are many dangers ahead of us. Make a guess: by the end of this trip, how many of us will have died?"],
   ],
   quote: { text: "Serj. Floyd Died with a great deal of Composure.", cite: "William Clark's journal, August 20, 1804" },
@@ -793,12 +805,12 @@ const STOPS = [
     "The Corps still had more than a thousand miles of river ahead, and it needed its trade goods for every nation it would meet along the way.",
   ],
   talk: [
-    ["clark", "We have reached the Lakota, also called the Teton Sioux. They are the most powerful nation on the Missouri. They control trade on this river, and they expect visitors to show respect and bring gifts."],
-    ["lewis", "President Jefferson especially wants the Lakota as friends. But this meeting is going badly. Some warriors have grabbed the rope of our boat, and they want more gifts before they will let us pass."],
-    ["clark", "I have drawn my sword. Their warriors have strung their bows. On the keelboat, our men are aiming a small cannon at the crowd."],
-    ["lewis", "We still have more than a thousand miles to go, and we need our trade goods for every nation ahead. Captain Clark, the choice is yours. What do we do?"],
+    ["clark", "We have reached the Lakota, also called the Teton Sioux. They are the most powerful nation on the Missouri River. They control trade here. They expect visitors to show respect and bring gifts."],
+    ["lewis", "President Jefferson really wants the Lakota as friends. But this meeting is going badly. Some warriors grabbed the rope of our boat. They want more gifts before they let us pass."],
+    ["clark", "I have pulled out my sword. Their warriors have their bows ready. On the keelboat, our men are pointing a small cannon at the crowd."],
+    ["lewis", "We still have more than a thousand miles to go. We need our trade goods for every nation ahead. Captain Clark, it is your choice. What do we do?"],
   ],
-  done: ["clark", "Black Buffalo kept a cool head, and so did we. Nobody fired a shot. Now we keep moving north."],
+  done: ["clark", "Black Buffalo stayed calm, and so did we. Nobody fired a shot. Now we keep moving north."],
   act: {
     type: "mc",
     prompt: "You are Captain Clark. Which choice gives the expedition the best chance to survive and keep going?",
@@ -817,14 +829,16 @@ const STOPS = [
   title: "Winter with the Mandan & Hidatsa",
   story: [
     "As the river began to freeze, the Corps built <strong>Fort Mandan</strong> beside the villages of the Mandan and Hidatsa, busy trading towns with more people than St. Louis. The temperature dropped to 40 below zero.",
+    "Many people came to see <strong>York</strong>, the first Black man they had ever met. A Hidatsa chief rubbed York's skin with a wet finger to check whether it was paint.",
     "Here the captains hired a French-Canadian trader, Toussaint Charbonneau, and his teenage Shoshone wife, <strong>Sacagawea</strong>, as interpreters. In February 1805 she gave birth to a son, Jean Baptiste, nicknamed 'Pomp,' who rode on her back the entire way.",
     "In April, the Corps sent the keelboat back to Jefferson, loaded with maps, notes and specimens, including a <strong>live prairie dog</strong>.",
   ],
   talk: [
-    ["clark", "When the river began to freeze, we built a fort for the winter beside the villages of the Mandan and Hidatsa. These are busy trading towns, with more people than St. Louis!"],
-    ["lewis", "It was bitterly cold. Some nights the thermometer dropped to 40 degrees below zero."],
-    ["clark", "We hired a French-Canadian trader, Toussaint Charbonneau, and his teenage wife, Sacagawea, as interpreters. She is Shoshone. In February she had a baby boy, Jean Baptiste. We call him Pomp."],
-    ["lewis", "In the spring we sent our keelboat back to President Jefferson, full of maps, notes and animals no American scientist had ever seen. Can you match each animal to the way I described it?"],
+    ["clark", "The river started to freeze, so we built a fort for the winter. It is next to the villages of the Mandan and Hidatsa. These busy trading towns have more people than St. Louis!"],
+    ["lewis", "It was very cold. Some nights it was 40 degrees below zero."],
+    ["york", "I am York. The Hidatsa had never seen a Black man before. One of their chiefs wet his finger and rubbed my skin, to see if I was wearing paint. It does not come off."],
+    ["clark", "We hired two interpreters. That means they can turn one language into another. One is a French-Canadian trader, Toussaint Charbonneau. The other is his teenage wife, Sacagawea. She is Shoshone. In February she had a baby boy. We call him Pomp."],
+    ["lewis", "In the spring, we sent our keelboat back to President Jefferson. It was full of maps, notes, and animals American scientists had never seen. Can you match each animal to how I described it?"],
   ],
   done: ["lewis", "A live prairie dog and four magpies made it all the way to the President! Now we head west, into land no American has ever mapped."],
   act: {
@@ -848,12 +862,12 @@ const STOPS = [
     "But there wasn't just one waterfall. There were <strong>five</strong>. The men had to carry their canoes and tons of gear about <strong>18 miles</strong> around them, on wheels cut from a cottonwood tree, through cactus, hailstorms and grizzly country. The day after he found the falls, Lewis was chased into the river by a grizzly bear.",
   ],
   talk: [
-    ["lewis", "The Hidatsa told us about a great waterfall ahead. Today I heard a roar and saw spray rising like smoke. It is the grandest sight I have ever seen."],
-    ["clark", "But there is not just one waterfall. There are five! We cannot paddle past them. We must carry our canoes and tons of supplies about 18 miles around them, over land."],
-    ["lewis", "We cut wheels from a cottonwood tree to roll the canoes. The ground is covered in cactus, the hail is the size of eggs, and there are grizzly bears everywhere. One chased me right into the river!"],
+    ["lewis", "The Hidatsa told us about a big waterfall ahead. Today I heard a roar and saw spray rising like smoke. It is the most amazing sight I have ever seen."],
+    ["clark", "But there is not just one waterfall. There are five! We cannot paddle past them. We must carry our canoes and supplies about 18 miles around them, over land."],
+    ["lewis", "We made wheels from a tree to roll the canoes. The ground is full of cactus. Hail falls as big as eggs. Grizzly bears are everywhere. One chased me right into the river!"],
     ["clark", "Make a guess: how many days will it take us to get past these falls?"],
   ],
-  done: ["clark", "Thirty-two days to go 18 miles. The men are worn out, but we are past the falls and on the river again."],
+  done: ["clark", "It took 32 days to go 18 miles. The men are worn out. But we are past the falls and back on the river."],
   quote: { text: "…the grandest sight I ever beheld.", cite: "Meriwether Lewis, June 13, 1805" },
   act: {
     type: "slider", min: 1, max: 60, start: 10, answer: 32, unit: "days",
@@ -870,12 +884,12 @@ const STOPS = [
     "Jefferson hoped the Missouri's source would be a short walk from a river flowing to the Pacific: carry the canoes for half a day, then paddle on to the ocean. But west of here rise the <strong>Rocky Mountains</strong>, far too high and wide for that. Along their crest runs the <strong>Continental Divide</strong>. Rain that falls east of it flows into the Missouri, then the Mississippi, then the Gulf of Mexico. Rain that falls west of it flows to the Pacific. No river crosses it.",
   ],
   talk: [
-    ["clark", "Here the Missouri River splits into three rivers. We named them the Jefferson, the Madison and the Gallatin, after the President and two members of his government."],
-    ["lewis", "Sacagawea knows this place. About five years ago, Hidatsa raiders attacked her Shoshone band right here and kidnapped her."],
-    ["lewis", "President Jefferson hoped we could carry our canoes over a low hill near here and paddle on to the Pacific. But look west. Those are the Rocky Mountains, and they are enormous."],
-    ["clark", "Read the sidebar carefully, especially the part about the Continental Divide. Then tell us: how will we reach the Pacific?"],
+    ["clark", "Here the Missouri River splits into three rivers. We named them after President Jefferson and two of his top helpers, Madison and Gallatin."],
+    ["sacagawea", "I know this place. About five summers ago, my people, the Shoshone, were camped right here when Hidatsa raiders attacked. They captured me and took me far away, down the river."],
+    ["lewis", "President Jefferson hoped we could carry our canoes over a small hill and paddle on to the Pacific. But look west. Those are the Rocky Mountains, and they are huge."],
+    ["clark", "Read the words {side} carefully, especially the part about the Continental Divide. Then tell us: how will we get to the Pacific?"],
   ],
-  done: ["lewis", "So we need horses, and only the Shoshone have them. Sacagawea's people may be our only hope."],
+  done: ["sacagawea", "My people spend the summer in the mountains to the west, and they have many horses. If we keep going up this river, we will find them."],
   act: {
     type: "mc",
     prompt: "The Corps is paddling up the Jefferson River toward the mountains. Based on the reading, how will it reach the Pacific?",
@@ -896,10 +910,11 @@ const STOPS = [
     "Partly thanks to her, the Shoshone traded about 29 horses to the Corps and sent a guide, called Old Toby, to lead them across the mountains.",
   ],
   talk: [
-    ["lewis", "I went ahead and found a Shoshone band led by Chief Cameahwait. We need their horses badly, but talking with them is very hard."],
-    ["lewis", "When Sacagawea arrived to help translate, she began to dance and cry for joy. Chief Cameahwait is her brother!"],
-    ["clark", "Partly thanks to her, the Shoshone traded us about 29 horses and gave us a guide, Old Toby, to lead us across the mountains."],
-    ["clark", "But every message between us passed through five people and four languages. Can you put the chain in order, from Captain Lewis to the Chief?"],
+    ["lewis", "I went ahead and found a Shoshone group led by Chief Cameahwait. We really need their horses. But talking with them is very hard."],
+    ["lewis", "When Sacagawea arrived to help translate, she began to dance and cry for joy."],
+    ["sacagawea", "Chief Cameahwait is my brother! I had not seen him since I was taken. But he told me that most of my family has died."],
+    ["clark", "Partly thanks to her, the Shoshone traded us about 29 horses. They also gave us a guide, Old Toby, to lead us over the mountains."],
+    ["sacagawea", "Talking with my brother is slow. Every word from Captain Lewis goes through five people and four languages. I am one of them. Can you put the people in order?"],
   ],
   done: ["clark", "Four languages there, and four languages back. Talks took hours, but we got our horses. Now, over the mountains."],
   quote: { text: "…[she] began to dance and show every mark of the most extravagant joy.", cite: "Meriwether Lewis, August 17, 1805" },
@@ -927,10 +942,10 @@ const STOPS = [
     "Instead of attacking, the Nez Perce fed the men dried salmon and camas roots, agreed to care for their horses through the winter, and showed them how to make dugout canoes for the trip down to the Columbia River.",
   ],
   talk: [
-    ["clark", "Crossing the Bitterroot Mountains took 11 terrible days in the snow. There was almost nothing to hunt. We ate portable soup, and even some of our own horses."],
-    ["lewis", "Half-starved, we stumbled onto a prairie, the home of the Nez Perce. They had never met Americans before. They could easily have taken our rifles."],
-    ["clark", "Instead, they fed us dried salmon and camas roots. They agreed to care for our horses through the winter, and showed us how to make canoes."],
-    ["lewis", "The Nez Perce still tell a story about why they helped us. Read it in the sidebar, then answer the question."],
+    ["clark", "Crossing the Bitterroot Mountains took 11 terrible days in the snow. There was almost nothing to hunt. We ate dried soup, and even some of our own horses."],
+    ["lewis", "We were starving when we came out of the mountains onto a wide, grassy prairie. It is the home of the Nez Perce. They had never met Americans before. They could easily have taken our guns."],
+    ["clark", "Instead, they fed us dried salmon and camas roots. They took care of our horses for the winter. They showed us how to make canoes."],
+    ["lewis", "The Nez Perce still tell a story about why they helped us. Read it {side}. Then answer the question."],
   ],
   done: ["lewis", "We owe the Nez Perce our lives. Now we build canoes and ride the rivers down to the Pacific."],
   quote: { text: "I have been wet and as cold in every part as I ever was in my life.", cite: "William Clark, September 16, 1805" },
@@ -954,12 +969,14 @@ const STOPS = [
     "Storms trapped them on the rocky shore for weeks. To decide where to spend the winter, the captains did something remarkable: they let <strong>everyone vote</strong>, including York, an enslaved Black man, and Sacagawea, a Native woman. Neither group could vote in U.S. elections at the time.",
   ],
   talk: [
-    ["clark", "We raced down the Snake and Columbia rivers. On November 7, 1805, I wrote in my journal: “Ocian in view! O! the joy.” Yes, that is how I spelled it."],
-    ["lewis", "But storms have trapped us on this rocky shore for weeks. We are cold, wet and hungry, and we must decide where to spend the winter."],
-    ["clark", "So we are letting everyone vote, including York and Sacagawea. Neither of them could ever vote back home."],
-    ["lewis", "Now it is your turn. Cast your vote in the sidebar."],
+    ["clark", "We raced down the Snake and Columbia rivers. On November 7, 1805, I wrote in my journal: “Ocian in view! O! the joy.” Yes, I spelled ocean wrong."],
+    ["lewis", "But storms have trapped us on this rocky shore for weeks. We are cold, wet, and hungry. We must decide where to spend the winter."],
+    ["clark", "So we are letting everyone vote, even York and Sacagawea. Back home, neither of them would be allowed to vote."],
+    ["york", "Back home, I cannot vote. I cannot even choose where I live. Out here, my vote counts the same as a captain's."],
+    ["sacagawea", "I vote for a place where there are plenty of wapato roots to eat."],
+    ["lewis", "Now it is your turn. Vote {side}."],
   ],
-  done: ["clark", "It rained on all but 12 days at Fort Clatsop. Still, we had a roof over our heads and plenty of elk to eat."],
+  done: ["sacagawea", "A whale washed up on the beach. Captain Clark is taking some men to see it. I came a long way to see the ocean, so I asked to go too. He said yes."],
   quote: { text: "Ocian in view! O! the joy.", cite: "William Clark, November 7, 1805" },
   act: {
     type: "vote",
@@ -982,9 +999,9 @@ const STOPS = [
     "Lewis went north to explore the Marias River. On July 27, 1806, his small group camped with eight young <strong>Blackfeet</strong> men. At dawn the Blackfeet tried to take their guns and horses. In the fight, two Blackfeet men were killed: the only deadly violence of the expedition.",
   ],
   talk: [
-    ["lewis", "In March we started for home. After we crossed the Bitterroot Mountains again, Captain Clark and I split up, so that we could explore more land."],
-    ["clark", "Look at the map. The red lines are our two routes: L marks Captain Lewis's, and C marks mine. I went south along the Yellowstone River and carved my name on a sandstone tower. I named it Pompy's Tower, after Sacagawea's son."],
-    ["lewis", "I went north with a few men to explore the Marias River. We camped with eight young Blackfeet men. At dawn they tried to take our guns and horses, and in the fight, two of them were killed."],
+    ["lewis", "In March, we started for home. After we crossed the mountains again, Captain Clark and I split up. That way we could explore more land."],
+    ["clark", "Look at the map. The red lines are our two routes. L marks Captain Lewis's route. C marks mine. I went south along the Yellowstone River. I carved my name on a big rock and named it Pompy's Tower, after Sacagawea's son."],
+    ["lewis", "I went north with a few men to explore the Marias River. We camped with eight young Blackfeet men. At dawn, they tried to take our guns and horses. In the fight, two of them were killed."],
     ["lewis", "Find my route on the map. Click the route I took north."],
   ],
   act: {
@@ -1000,14 +1017,16 @@ const STOPS = [
   story: [
     "The two groups met up again on August 12, 1806, one day after Pierre Cruzatte, a one-eyed fiddler, accidentally shot Lewis in the backside while hunting. (Lewis survived, embarrassed.)",
     "Racing downstream with the current, they reached St. Louis on <strong>September 23, 1806</strong>. Many people had given them up for dead. They had traveled about <strong>8,000 miles</strong> in 28 months.",
+    "Back home, York asked Clark for his freedom. Clark refused. York stayed enslaved for about ten more years.",
   ],
   talk: [
     ["clark", "Our two groups found each other again on August 12, 1806. We were very glad to see each other."],
-    ["lewis", "The day before, Pierre Cruzatte, our one-eyed fiddler, mistook me for an elk and shot me in the backside. I will heal, but I may never live it down."],
-    ["clark", "With the current behind us, we raced downstream. On September 23, 1806, we reached St. Louis. Many people thought we were dead! We had traveled about 8,000 miles in 28 months."],
-    ["jefferson", "Welcome home, Captains. I have waited a long time for your report. So tell me: did you find the all-water route across the continent that I hoped for?"],
+    ["lewis", "The day before, one of our men, Pierre Cruzatte, thought I was an elk. He shot me in the backside! I will heal, but the men will never stop teasing me."],
+    ["clark", "The river carried us fast. On September 23, 1806, we reached St. Louis. Many people thought we were dead! We had traveled about 8,000 miles in 28 months."],
+    ["york", "I did everything the other men did, for 8,000 miles. Now that we are home, I asked Captain Clark for my freedom. He said no."],
+    ["jefferson", "Welcome home, Captains. I have waited a long time to hear from you. So tell me: did you find a water route all the way across the country?"],
   ],
-  done: ["jefferson", "No water route, then. But you brought back maps, science, and knowledge of the West that will change this nation. Well done, all of you."],
+  done: ["jefferson", "So there is no water route. But you brought back maps, science, and knowledge of the West. That will change this country. Well done, all of you."],
   act: {
     type: "mc",
     prompt: "Did the expedition find what Jefferson wanted most — an all-water route across the continent?",
@@ -1303,12 +1322,21 @@ function animate(ms, frame) {
 }
 const dur = len => Math.min(5500, Math.max(1600, 600 + len * 1.4));
 const dayTicker = (a, b) => (a == null || b == null) ? () => {} : e => setDay(Math.round(a + (b - a) * e));
+// the trail line passes near each stop, not exactly through it, so the pin is nudged from the
+// start stop's exact spot to the end stop's exact spot as it travels and always lands on the dot
+const nudge = (path, d0, d1, a, b) => {
+  const p0 = at(path, d0).pt, p1 = at(path, d1).pt;
+  const o0 = [a[0] - p0[0], a[1] - p0[1]], o1 = [b[0] - p1[0], b[1] - p1[1]];
+  return (pt, e) => [pt[0] + o0[0] + (o1[0] - o0[0]) * e, pt[1] + o0[1] + (o1[1] - o0[1]) * e];
+};
 async function travel(from, to) {
   traveling = true;
   await fitPts(between(TRAIL, from.d, to.d), { ms: 800 });
   pinEl.classList.remove("landed"); pinEl.classList.add("moving");
   const tick = dayTicker(from.date && dayOf(from.date), to.date && dayOf(to.date));
-  await animate(dur(to.d - from.d), e => { const d = from.d + (to.d - from.d) * e; drawTrail(d); placePin(at(TRAIL, d).pt); tick(e); });
+  const fix = nudge(TRAIL, from.d, to.d, D[from.id], D[to.id]);
+  await animate(dur(to.d - from.d), e => { const d = from.d + (to.d - from.d) * e; drawTrail(d); placePin(fix(at(TRAIL, d).pt, e)); tick(e); });
+  placePin(D[to.id]);
   land(); traveling = false;
 }
 async function travelHome(stage, from, to) {
@@ -1317,7 +1345,9 @@ async function travelHome(stage, from, to) {
   await fitPts(stage === 1 ? [D.clatsop, D.blackfeet, D.shoshone, [-104.03, 47.98]] : path.pts, { ms: 800, maxZoom: 5.5 });
   pinEl.classList.remove("landed"); pinEl.classList.add("moving");
   const tick = dayTicker(dayOf(from.date), dayOf(to.date));
-  await animate(stage === 1 ? 5500 : 5000, e => { drawReturn(stage, e); placePin(at(path, path.len * e).pt); tick(e); });
+  const fix = nudge(path, 0, path.len, D[from.id], D[to.id]);
+  await animate(stage === 1 ? 5500 : 5000, e => { drawReturn(stage, e); placePin(fix(at(path, path.len * e).pt, e)); tick(e); });
+  placePin(D[to.id]);
   land(); traveling = false;
 }
 
@@ -1325,7 +1355,7 @@ async function travelHome(stage, from, to) {
 let picking = null;
 function setPick(handler) {
   picking = handler;
-  ["lewis", "clark"].forEach(k => {
+    ["lewis", "clark"].forEach(k => {
     paint("ret-" + k, "line-width", handler ? 5 : 3);
     paint("ret-" + k, "line-color", "#b8442f");
   });
@@ -1379,8 +1409,10 @@ function bumpPoints(n) {
 /* ===================== People who speak ===================== */
 const adv = $("#adv"), advText = $("#adv-text"), askAgain = $("#ask-again");
 const plain = t => String(t).replace(/<[^>]+>/g, "");
+// on phones the reading sits under the map instead of beside it
+const side = t => t.replace(/\{side\}/g, innerWidth <= 980 ? "below the map" : "on the right side of your screen");
 // small round faces zoom in on the painting, so the face fills the circle
-const faceHTML = w => { const a = ADV[w]; return a.ok ? `<span class="face pic" style="background-image:url('${a.img}')" aria-hidden="true"></span>` : `<span class="face" style="--c:${a.c}" aria-hidden="true">${a.mono}</span>`; };
+const faceHTML = w => { const a = ADV[w]; return a.ok ? `<span class="mug pic" style="background-image:url('${a.img}')" aria-hidden="true"></span>` : `<span class="mug" style="--c:${a.c}" aria-hidden="true">${a.mono}</span>`; };
 const speakers = lines => [...new Set(lines.map(l => l[0]))];
 let talkQ = null;
 // the sidebar steps back and says who is speaking
@@ -1411,7 +1443,7 @@ function showLine() {
   $("#adv-count").textContent = q.lines.length > 1 ? `${q.i + 1} of ${q.lines.length}` : "";
   const last = q.i === q.lines.length - 1;
   $("#adv-next").textContent = last ? (q.focus ? "Got it ✓" : "Close ✓") : "Next ▸";
-  const full = plain(text);
+  const full = plain(side(text));
   clearInterval(q.typing); q.typing = null;
   if (reduceMotion) { advText.textContent = full; return; }
   // make room for the whole line first, so the box eases to its new size instead of jumping as words appear
@@ -1427,7 +1459,7 @@ function showLine() {
 }
 $("#adv-next").onclick = () => {
   const q = talkQ; if (!q) return;
-  if (q.typing) { clearInterval(q.typing); q.typing = null; advText.textContent = plain(q.lines[q.i][1]); return; }
+  if (q.typing) { clearInterval(q.typing); q.typing = null; advText.textContent = plain(side(q.lines[q.i][1])); return; }
   if (q.i < q.lines.length - 1) { q.i++; showLine(); return; }
   closeTalk();
   if (q.onDone) q.onDone();
@@ -1808,7 +1840,7 @@ function finale() {
     </div>
   </div>`;
   panel.scrollTop = 0;
-  $("#dl").onclick = downloadJournal;
+  $("#dl").onclick = () => downloadJournal();
   $("#restart").onclick = restart;
   if (!reduceMotion) confetti();
 }
@@ -1838,9 +1870,10 @@ const loadPdfLib = () => pdfLib || (pdfLib = new Promise((res, rej) => {
 // the PDF's built-in fonts only cover Western European letters; drop anything else (like emoji)
 const WIN_ANSI = "€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ";
 const pdfText = t => String(t).replace(/[^\n\x20-\x7e\xa0-\xff]/g, c => WIN_ANSI.includes(c) ? c : "");
-async function downloadJournal() {
-  const btn = $("#dl");
-  btn.disabled = true; btn.textContent = "Making your PDF…";
+// works at any point: before the end it lists only the stops reached, so students can turn in what they have
+async function downloadJournal(btn = $("#dl"), label) {
+  const reset = done => { if (label) { btn.innerHTML = label; if (done) toast(done); } };
+  btn.disabled = true; btn.textContent = label ? "Saving…" : "Making your PDF…";
   try {
     const JsPDF = await loadPdfLib();
     const doc = new JsPDF({ unit: "pt", format: "letter" });
@@ -1852,11 +1885,11 @@ async function downloadJournal() {
       for (const line of doc.splitTextToSize(pdfText(text), W - 2 * M)) { need(size * 1.35); doc.text(line, M, y + size); y += size * 1.35; }
       y += gap;
     };
-    const p = points(), [rk] = rank(p);
+    const p = points();
     write("Expedition Journal", { font: "times", style: "bold", size: 26, gap: 2 });
     write("The Corps of Discovery, 1803–1806", { font: "times", style: "italic", size: 13, color: [111, 96, 78], gap: 10 });
-    write(`${S.name || "Student"}  ·  ${rk}  ·  ${p} of ${maxPts} points  ·  ${new Date().toLocaleDateString()}`, { style: "bold", gap: 14 });
-    STOPS.forEach((st, i) => {
+    write(`${S.name || "Student"}  ·  ${status()}  ·  ${p} of ${maxPts} points  ·  ${new Date().toLocaleDateString()}`, { style: "bold", gap: 14 });
+    reached().forEach((st, i) => {
       need(70);
       doc.setDrawColor(227, 213, 185); doc.line(M, y, W - M, y); y += 12;
       write(`${i + 1}. ${st.title}`, { font: "times", style: "bold", size: 15, gap: 1 });
@@ -1868,6 +1901,10 @@ async function downloadJournal() {
         write(S.journals[st.id] || "(no entry)", { font: "times", style: "italic", size: 12, color: [29, 45, 107], gap: 10 });
       }
     });
+    if (!S.finished && reached().length < STOPS.length) {
+      need(40); doc.setDrawColor(227, 213, 185); doc.line(M, y, W - M, y); y += 12;
+      write(`Stops ${reached().length + 1} to ${STOPS.length}: not reached yet.`, { style: "italic", size: 11, color: [111, 96, 78] });
+    }
     const pages = doc.getNumberOfPages();
     for (let k = 1; k <= pages; k++) {
       doc.setPage(k); doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(140, 125, 105);
@@ -1875,22 +1912,28 @@ async function downloadJournal() {
     }
     doc.save(`${(S.name || "").replace(/[^\p{L}\p{N}\- ]+/gu, "").trim() || "Student"} - Lewis and Clark journal.pdf`);
     btn.textContent = "✓ Downloaded. Download again";
+    reset("Saved! Turn in the PDF file to your teacher.");
   } catch (e) {
     saveTextJournal();
     toast("The PDF wasn't available, so your journal saved as a text file. Turn that in instead.");
     btn.textContent = "✓ Saved as text. Try the PDF again";
+    reset();
   }
   btn.disabled = false;
 }
+// the stops the student has reached, and how far along they are
+const reached = () => S.finished ? STOPS : STOPS.slice(0, Math.min(S.unlocked, STOPS.length - 1) + 1);
+const status = () => S.finished ? rank(points())[0] : `In progress: stop ${reached().length} of ${STOPS.length}`;
 // the plain-text backup for when the PDF library can't load: a student can always turn something in
 function saveTextJournal() {
-  const out = ["Expedition Journal: The Corps of Discovery, 1803–1806", `${S.name || "Student"} · ${rank(points())[0]} · ${points()} of ${maxPts} points · ${new Date().toLocaleDateString()}`, ""];
-  STOPS.forEach((st, i) => {
+  const out = ["Expedition Journal: The Corps of Discovery, 1803–1806", `${S.name || "Student"} · ${status()} · ${points()} of ${maxPts} points · ${new Date().toLocaleDateString()}`, ""];
+  reached().forEach((st, i) => {
     const r = S.results[st.id];
     out.push(`${i + 1}. ${st.title}`, `Challenge: ${r ? `${r.pts}/10${r.summary ? " (" + r.summary + ")" : ""}` : "not completed"}`);
     if (st.journal) out.push(st.journal, S.journals[st.id] || "(no entry)");
     out.push("");
   });
+  if (!S.finished && reached().length < STOPS.length) out.push(`Stops ${reached().length + 1} to ${STOPS.length}: not reached yet.`);
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([out.join("\n")], { type: "text/plain" }));
   a.download = `${(S.name || "").replace(/[^\p{L}\p{N}\- ]+/gu, "").trim() || "Student"} - Lewis and Clark journal.txt`;
@@ -1915,6 +1958,7 @@ function drawProgress() {
 }
 async function begin() {
   intro.hidden = true;
+  $("#save-work").hidden = false;
   await mapReady;
   started = true;
   refreshChrome();
@@ -1944,6 +1988,7 @@ $("#enlist").onclick = () => {
   S.name = n; save(); begin();
 };
 nameIn.addEventListener("keydown", e => { if (e.key === "Enter") $("#enlist").click(); });
+$("#save-work").onclick = () => downloadJournal($("#save-work"), "⬇<span> Save my work</span>");
 
 refreshChrome();
 showIntro();
