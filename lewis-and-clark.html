@@ -253,7 +253,7 @@
   }
   .feedback.warn { background: var(--red-soft); border-color: #eab9ac; }
   .feedback.info { background: var(--gold-soft); border-color: #ecd49c; }
-  .feedback b:first-child { display: block; margin-bottom: 2px; }
+  .feedback b.lead { display: block; margin-bottom: 2px; }
 
   .btn {
     display: inline-flex; align-items: center; gap: 8px; justify-content: center;
@@ -1607,7 +1607,8 @@ function complete(st, pts, summary) {
   setTimeout(() => { const f = $("#act #fb") || $("#act"); f && f.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" }); }, 60);
   if (st.done) setTimeout(() => { if (STOPS[viewing] === st) talk([st.done], () => offerAgain(st)); }, reduceMotion ? 0 : 900);
 }
-const fb = (cls, html) => `<div class="feedback ${cls}">${html}</div>`;
+// a bold phrase that opens the message is its headline, on its own line; bold words later stay in the sentence
+const fb = (cls, html) => `<div class="feedback ${cls}">${html.replace(/^<b>/, '<b class="lead">')}</div>`;
 const reviewBanner = res => `<div class="done-banner">${ICON.check.replace("<svg", '<svg width="18" height="18"')} Completed · ${res.pts} points${res.summary ? " · " + esc(res.summary) : ""}</div>`;
 
 /* ===================== Activities ===================== */
