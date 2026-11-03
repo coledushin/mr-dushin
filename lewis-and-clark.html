@@ -415,6 +415,7 @@
   .say { flex: 1; min-width: 0; min-height: 150px; display: flex; flex-direction: column; }
   .bubble .who { font-family: var(--serif); font-size: 22px; line-height: 1.1; }
   .bubble .who small { display: block; font-family: "Nunito", sans-serif; font-size: 12.5px; font-weight: 700; color: var(--muted); }
+  .bubble .who small.credit { font-weight: 600; font-style: italic; font-size: 12px; }
   .bubble p { margin: 6px 0 8px; font-size: 16.5px; line-height: 1.45; flex: 1; }
   #adv-text { transition: min-height .28s ease; }
   .bubble .foot { display: flex; align-items: center; gap: 10px; }
@@ -641,6 +642,9 @@ const ADV = {
   lewis:     { short: "Lewis", name: "Captain Meriwether Lewis", role: "Co-leader of the Corps of Discovery", mono: "ML", c: "#2e6b4f", img: "portraits/lewis.jpg" },
   clark:     { short: "Clark", name: "Captain William Clark", role: "Co-leader of the Corps and its mapmaker", mono: "WC", c: "#b4572e", img: "portraits/clark.jpg" },
   rush:      { short: "Dr. Rush", name: "Dr. Benjamin Rush", role: "Doctor and teacher in Philadelphia", mono: "BR", c: "#6b5a3a", img: "portraits/rush.jpg" },
+  // no one painted these two in their lifetimes; the credit tells students the picture was imagined later
+  sacagawea: { short: "Sacagawea", name: "Sacagawea", role: "Shoshone interpreter", mono: "S", c: "#7a4a2a", img: "portraits/sacagawea.jpg", credit: "Imagined by artist Edgar S. Paxson in 1912" },
+  york:      { short: "York", name: "York", role: "Member of the Corps, enslaved by Captain Clark", mono: "Y", c: "#5b4a8a", img: "portraits/york.jpg", credit: "Imagined by artist Charles M. Russell in 1908" },
 };
 for (const a of Object.values(ADV)) { const im = new Image(); im.onload = () => { a.ok = true; }; im.src = a.img; }
 
@@ -817,12 +821,14 @@ const STOPS = [
   title: "Winter with the Mandan & Hidatsa",
   story: [
     "As the river began to freeze, the Corps built <strong>Fort Mandan</strong> beside the villages of the Mandan and Hidatsa, busy trading towns with more people than St. Louis. The temperature dropped to 40 below zero.",
+    "Many people came to see <strong>York</strong>, the first Black man they had ever met. A Hidatsa chief rubbed York's skin with a wet finger to check whether it was paint.",
     "Here the captains hired a French-Canadian trader, Toussaint Charbonneau, and his teenage Shoshone wife, <strong>Sacagawea</strong>, as interpreters. In February 1805 she gave birth to a son, Jean Baptiste, nicknamed 'Pomp,' who rode on her back the entire way.",
     "In April, the Corps sent the keelboat back to Jefferson, loaded with maps, notes and specimens, including a <strong>live prairie dog</strong>.",
   ],
   talk: [
     ["clark", "When the river began to freeze, we built a fort for the winter beside the villages of the Mandan and Hidatsa. These are busy trading towns, with more people than St. Louis!"],
     ["lewis", "It was bitterly cold. Some nights the thermometer dropped to 40 degrees below zero."],
+    ["york", "I am York. The Hidatsa had never seen a Black man before. One of their chiefs wet his finger and rubbed my skin, to see if I was wearing paint. It does not come off."],
     ["clark", "We hired a French-Canadian trader, Toussaint Charbonneau, and his teenage wife, Sacagawea, as interpreters. She is Shoshone. In February she had a baby boy, Jean Baptiste. We call him Pomp."],
     ["lewis", "In the spring we sent our keelboat back to President Jefferson, full of maps, notes and animals no American scientist had ever seen. Can you match each animal to the way I described it?"],
   ],
@@ -871,11 +877,11 @@ const STOPS = [
   ],
   talk: [
     ["clark", "Here the Missouri River splits into three rivers. We named them the Jefferson, the Madison and the Gallatin, after the President and two members of his government."],
-    ["lewis", "Sacagawea knows this place. About five years ago, Hidatsa raiders attacked her Shoshone band right here and kidnapped her."],
+    ["sacagawea", "I know this place. About five summers ago, my people, the Shoshone, were camped right here when Hidatsa raiders attacked. They captured me and took me far away, down the river."],
     ["lewis", "President Jefferson hoped we could carry our canoes over a low hill near here and paddle on to the Pacific. But look west. Those are the Rocky Mountains, and they are enormous."],
     ["clark", "Read the sidebar carefully, especially the part about the Continental Divide. Then tell us: how will we reach the Pacific?"],
   ],
-  done: ["lewis", "So we need horses, and only the Shoshone have them. Sacagawea's people may be our only hope."],
+  done: ["sacagawea", "My people spend the summer in the mountains to the west, and they have many horses. If we keep going up this river, we will find them."],
   act: {
     type: "mc",
     prompt: "The Corps is paddling up the Jefferson River toward the mountains. Based on the reading, how will it reach the Pacific?",
@@ -897,9 +903,10 @@ const STOPS = [
   ],
   talk: [
     ["lewis", "I went ahead and found a Shoshone band led by Chief Cameahwait. We need their horses badly, but talking with them is very hard."],
-    ["lewis", "When Sacagawea arrived to help translate, she began to dance and cry for joy. Chief Cameahwait is her brother!"],
+    ["lewis", "When Sacagawea arrived to help translate, she began to dance and cry for joy."],
+    ["sacagawea", "Chief Cameahwait is my brother! I had not seen him since I was taken. But he told me that most of my family has died."],
     ["clark", "Partly thanks to her, the Shoshone traded us about 29 horses and gave us a guide, Old Toby, to lead us across the mountains."],
-    ["clark", "But every message between us passed through five people and four languages. Can you put the chain in order, from Captain Lewis to the Chief?"],
+    ["sacagawea", "Talking with my brother is slow. Every word from Captain Lewis passes through five people and four languages, and I am one of them. Can you put the chain in order?"],
   ],
   done: ["clark", "Four languages there, and four languages back. Talks took hours, but we got our horses. Now, over the mountains."],
   quote: { text: "…[she] began to dance and show every mark of the most extravagant joy.", cite: "Meriwether Lewis, August 17, 1805" },
@@ -957,9 +964,11 @@ const STOPS = [
     ["clark", "We raced down the Snake and Columbia rivers. On November 7, 1805, I wrote in my journal: “Ocian in view! O! the joy.” Yes, that is how I spelled it."],
     ["lewis", "But storms have trapped us on this rocky shore for weeks. We are cold, wet and hungry, and we must decide where to spend the winter."],
     ["clark", "So we are letting everyone vote, including York and Sacagawea. Neither of them could ever vote back home."],
+    ["york", "Back home, I cannot vote. I cannot even choose where I live. Out here, my vote counts the same as a captain's."],
+    ["sacagawea", "I vote for a place where there are plenty of wapato roots to eat."],
     ["lewis", "Now it is your turn. Cast your vote in the sidebar."],
   ],
-  done: ["clark", "It rained on all but 12 days at Fort Clatsop. Still, we had a roof over our heads and plenty of elk to eat."],
+  done: ["sacagawea", "A whale has washed up on the beach, and Captain Clark is taking men to see it. I have traveled a long way to see the great waters, so I asked to go too. He said yes."],
   quote: { text: "Ocian in view! O! the joy.", cite: "William Clark, November 7, 1805" },
   act: {
     type: "vote",
@@ -1000,11 +1009,13 @@ const STOPS = [
   story: [
     "The two groups met up again on August 12, 1806, one day after Pierre Cruzatte, a one-eyed fiddler, accidentally shot Lewis in the backside while hunting. (Lewis survived, embarrassed.)",
     "Racing downstream with the current, they reached St. Louis on <strong>September 23, 1806</strong>. Many people had given them up for dead. They had traveled about <strong>8,000 miles</strong> in 28 months.",
+    "Back home, York asked Clark for his freedom. Clark refused. York stayed enslaved for about ten more years.",
   ],
   talk: [
     ["clark", "Our two groups found each other again on August 12, 1806. We were very glad to see each other."],
     ["lewis", "The day before, Pierre Cruzatte, our one-eyed fiddler, mistook me for an elk and shot me in the backside. I will heal, but I may never live it down."],
     ["clark", "With the current behind us, we raced downstream. On September 23, 1806, we reached St. Louis. Many people thought we were dead! We had traveled about 8,000 miles in 28 months."],
+    ["york", "I did everything the other men did, for 8,000 miles. Now that we are home, I asked Captain Clark for my freedom. He said no."],
     ["jefferson", "Welcome home, Captains. I have waited a long time for your report. So tell me: did you find the all-water route across the continent that I hoped for?"],
   ],
   done: ["jefferson", "No water route, then. But you brought back maps, science, and knowledge of the West that will change this nation. Well done, all of you."],
@@ -1325,7 +1336,7 @@ async function travelHome(stage, from, to) {
 let picking = null;
 function setPick(handler) {
   picking = handler;
-  ["lewis", "clark"].forEach(k => {
+    ["lewis", "clark"].forEach(k => {
     paint("ret-" + k, "line-width", handler ? 5 : 3);
     paint("ret-" + k, "line-color", "#b8442f");
   });
@@ -1407,7 +1418,7 @@ function showLine() {
   if (q.i && who !== q.lines[q.i - 1][0] && !reduceMotion) $(".frame").animate([{ opacity: 0 }, { opacity: 1 }], { duration: 280, easing: "ease" });
   if (a.ok) { img.src = a.img; img.alt = `Portrait of ${a.name}`; img.hidden = false; mono.hidden = true; }
   else { img.hidden = true; mono.hidden = false; mono.textContent = a.mono; mono.style.setProperty("--c", a.c); }
-  $("#adv-who").innerHTML = `${esc(a.name)}<small>${esc(a.role)}</small>`;
+  $("#adv-who").innerHTML = `${esc(a.name)}<small>${esc(a.role)}</small>${a.credit && a.ok ? `<small class="credit">${esc(a.credit)}</small>` : ""}`;
   $("#adv-count").textContent = q.lines.length > 1 ? `${q.i + 1} of ${q.lines.length}` : "";
   const last = q.i === q.lines.length - 1;
   $("#adv-next").textContent = last ? (q.focus ? "Got it ✓" : "Close ✓") : "Next ▸";
