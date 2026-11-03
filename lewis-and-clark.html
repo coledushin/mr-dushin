@@ -89,7 +89,9 @@
   }
   .stat b { display: block; font-size: 17px; color: #fff; }
   .stat .short { display: none; }
+  /* sits in the .stats row, which stretches it to the same height as the stat boxes */
   .save-btn {
+    display: flex; align-items: center; gap: 5px;
     border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); color: #f6ecd6; border-radius: 10px;
     padding: 6px 12px; font-weight: 800; font-size: 14px; white-space: nowrap;
   }
@@ -311,8 +313,9 @@
   .face.back b { font-size: 14px; color: var(--rust-dark); margin-bottom: 3px; }
 
   /* match */
-  .match { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 8px; align-items: start; }
-  .match .col { display: grid; gap: 8px; }
+  /* both columns stretch to the same height and split it into equal rows, so the cards line up across */
+  .match { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 8px; }
+  .match .col { display: grid; gap: 8px; grid-auto-rows: 1fr; }
   .m-item {
     padding: 10px 12px; border-radius: 12px; border: 2px solid var(--line); background: #fff;
     font-weight: 700; text-align: left; font-size: 14.5px; line-height: 1.3; min-height: 64px;
@@ -570,8 +573,8 @@
   <div class="stats">
     <div class="stat" id="stat-day"><b id="day-n">—</b><span class="long">Expedition day</span><span class="short">Day</span></div>
     <div class="stat" id="stat-pts"><b id="pts-n">0</b>Points</div>
+    <button class="save-btn" id="save-work" hidden title="Download your journal so far, to turn in">⬇<span> Save my work</span></button>
   </div>
-  <button class="save-btn" id="save-work" hidden title="Download your journal so far, to turn in">⬇<span> Save my work</span></button>
 </header>
 
 <div class="app">
@@ -711,11 +714,11 @@ const STOPS = [
       { ico: "🐎", t: "A dozen horses", ok: false, why: "Horses can't ride a keelboat up a river. The Corps got horses much later — from the Shoshone." },
       { ico: "🧪", t: "Gunpowder in lead jars", ok: true, why: "Clever! 52 sealed lead canisters kept powder dry, and the lead could be melted down into bullets." },
       { ico: "💊", t: "Medicine chest", ok: true, why: "Including 'Dr. Rush's pills,' a harsh laxative the men nicknamed 'thunderclappers.'" },
-      { ico: "🪙", t: "Bags of gold coins", ok: false, why: "Coins were nearly useless in the West. Native nations traded for goods, not dollars." },
+      { ico: "💰", t: "Bags of gold coins", ok: false, why: "Coins were nearly useless in the West. Native nations traded for goods, not dollars." },
       { ico: "🧭", t: "Compass, sextant & notebooks", ok: true, why: "These let Clark make maps so accurate they were used for decades, and let both captains record everything." },
-      { ico: "🛞", t: "A covered wagon", ok: false, why: "There were no roads. The trip was by boat, on foot, and on horseback." },
+      { ico: "🐂", t: "A covered wagon", ok: false, why: "There were no roads. The trip was by boat, on foot, and on horseback." },
       { ico: "🔫", t: "An air rifle", ok: true, why: "Lewis's air gun fired without gunpowder. It amazed nearly everyone they met." },
-      { ico: "🦣", t: "A woolly mammoth trap", ok: false, why: "Funny — but Jefferson really did hope living mammoths might roam the West! They didn't." },
+      { ico: "🐘", t: "A woolly mammoth trap", ok: false, why: "Funny — but Jefferson really did hope living mammoths might roam the West! They didn't." },
     ],
   },
 },
