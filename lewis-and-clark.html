@@ -94,7 +94,9 @@
   @keyframes pulse { 50% { opacity: .45; } }
 
   /* ---------- Layout ---------- */
-  .app { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 460px; min-height: 0; }
+  .app { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 460px; grid-template-rows: minmax(0, 1fr); min-height: 0; }
+  .app > .mapwrap { grid-column: 1; grid-row: 1; }
+  .app > .panel { grid-column: 2; grid-row: 1; }
 
   .mapwrap {
     position: relative; min-height: 0; overflow: hidden;
@@ -155,8 +157,9 @@
   }
   .map-ui button:hover { background: #fff; }
   .map-ui button.wide { width: auto; padding: 0 12px; font-size: 13px; font-weight: 700; }
+  /* the key sits top-left, clear of the speech box along the bottom */
   .legend {
-    position: absolute; left: 14px; bottom: 14px;
+    position: absolute; left: 14px; top: 48px;
     background: rgba(255,253,247,.92); border: 1px solid var(--line); border-radius: 12px;
     padding: 8px 12px; font-size: 12.5px; box-shadow: var(--shadow); line-height: 1.7;
   }
@@ -374,6 +377,86 @@
     background: var(--green-soft); color: #234f3a; font-weight: 700; font-size: 15px; margin-top: 12px;
   }
 
+  /* ---------- People who speak ---------- */
+  .advisor {
+    position: absolute; left: 16px; bottom: 16px; z-index: 6; width: min(600px, calc(100% - 100px));
+    filter: drop-shadow(0 10px 24px rgba(30,15,0,.4));
+    animation: advIn .45s cubic-bezier(.2,.9,.3,1.15);
+  }
+  .advisor[hidden] { display: none; }
+  @keyframes advIn { from { transform: translateY(40px); opacity: 0; } }
+  .advisor.out { animation: advOut .3s ease forwards; }
+  @keyframes advOut { to { transform: translateY(30px); opacity: 0; } }
+  .bubble {
+    display: flex; align-items: flex-start; gap: 14px; padding: 14px;
+    background: linear-gradient(#fffdf7, #f6ecd6); border: 1px solid #c9b38a; border-radius: 16px;
+    box-shadow: inset 0 0 0 3px #fffdf7, inset 0 0 0 4px var(--line);
+  }
+  .frame {
+    flex: none; width: 116px; height: 150px; position: relative; border-radius: 12px; padding: 5px;
+    background: linear-gradient(135deg, #f6dc94, #b7862a 35%, #f3d585 55%, #8f6418);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.4), 0 0 0 1px #4d3510;
+  }
+  .frame img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 8px; filter: sepia(.3) contrast(1.05); }
+  .frame img[hidden], .frame .mono[hidden] { display: none; }
+  .frame::after { content: ""; position: absolute; inset: 5px; border-radius: 8px; box-shadow: inset 0 0 18px rgba(40,20,0,.45); pointer-events: none; }
+  /* a medallion with the speaker's initials, until a portrait is added to the portraits folder */
+  .mono {
+    display: grid; place-items: center; width: 100%; height: 100%; border-radius: 8px; position: relative;
+    background: radial-gradient(ellipse at 50% 38%, #fdf6e2, #ecdcb4 70%, #d6bf8a);
+    font-family: var(--serif); font-size: 42px; letter-spacing: -.02em; color: var(--c);
+  }
+  .mono::before { content: ""; position: absolute; inset: 12px 10px; border-radius: 50%; border: 1.5px solid currentColor; opacity: .45; }
+  .mono::after { content: ""; position: absolute; inset: 17px 15px; border-radius: 50%; border: 1px dashed currentColor; opacity: .3; }
+  .face { width: 34px; height: 34px; border-radius: 50%; flex: none; object-fit: cover; object-position: 50% 25%; border: 2px solid var(--gold); filter: sepia(.3); }
+  .face.pic { background: #3a2c1f 50% 30% / 165% auto no-repeat; filter: sepia(.3); }
+  span.face { display: inline-grid; place-items: center; background: var(--c); color: #fff; font: 400 14px/1 var(--serif); filter: none; }
+  .face + .face { margin-left: -12px; }
+  .say { flex: 1; min-width: 0; min-height: 150px; display: flex; flex-direction: column; }
+  .bubble .who { font-family: var(--serif); font-size: 22px; line-height: 1.1; }
+  .bubble .who small { display: block; font-family: "Nunito", sans-serif; font-size: 12.5px; font-weight: 700; color: var(--muted); }
+  .bubble p { margin: 6px 0 8px; font-size: 16.5px; line-height: 1.45; flex: 1; }
+  #adv-text { transition: min-height .28s ease; }
+  .bubble .foot { display: flex; align-items: center; gap: 10px; }
+  .bubble .count { font-size: 12.5px; font-weight: 800; color: var(--muted); flex: 1; }
+  .btn.small { padding: 7px 14px; font-size: 15px; }
+  .ask-again {
+    position: absolute; left: 16px; bottom: 16px; z-index: 5; display: flex; align-items: center; gap: 8px;
+    padding: 4px 14px 4px 4px; border-radius: 99px; border: 1px solid #c9b38a; background: var(--card); box-shadow: var(--shadow);
+    font-weight: 800; font-size: 13.5px;
+  }
+  .ask-again[hidden] { display: none; }
+  .ask-again:hover { background: #fff; }
+  .ask-again .faces { display: flex; }
+
+  /* while someone is talking, the sidebar steps back */
+  .hush {
+    grid-column: 2; grid-row: 1; z-index: 1; display: flex; justify-content: center; align-items: flex-start; padding: 90px 30px 0;
+    background: rgba(251,247,236,.8); backdrop-filter: blur(2px) grayscale(.4); animation: fadeIn .3s ease;
+  }
+  .hush[hidden] { display: none; }
+  @keyframes fadeIn { from { opacity: 0; } }
+  .hush.now { animation: none; }
+  .hush-card {
+    display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; max-width: 300px;
+    background: #2b2118; color: #f6ecd6; border-radius: 14px; padding: 16px 20px; box-shadow: var(--shadow);
+  }
+  .hush-card .faces { display: flex; }
+  .hush-card .face { width: 52px; height: 52px; font-size: 20px; }
+  .hush-card .face + .face { margin-left: -16px; }
+  .hush-card b { font-family: var(--serif); font-weight: 400; font-size: 22px; color: #f3cf7a; }
+  .hush-card span { font-size: 15px; }
+  .hush-card em { font-style: normal; font-weight: 800; color: #fff; }
+  .hush-card .arrow { margin-right: 8px; }
+  .hush-card .narrow { display: none; }
+  body:has(.hush:not([hidden])) .bubble { animation: glow 1.8s ease-in-out infinite; }
+  @keyframes glow { 50% { box-shadow: inset 0 0 0 3px #fffdf7, inset 0 0 0 4px var(--line), 0 0 0 4px rgba(212,154,42,.7), 0 0 24px 6px rgba(212,154,42,.45); } }
+  .panel.wake { animation: wake 1.4s ease; }
+  @keyframes wake { 0% { box-shadow: inset 0 0 0 4px rgba(212,154,42,.9); } 100% { box-shadow: none; } }
+  /* the challenge waits until the speakers are done */
+  .locked { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--gold-soft); color: #6a4a12; font-weight: 700; font-size: 15px; margin: 6px 0 10px; }
+  .challenge.wait #act { opacity: .5; pointer-events: none; }
+
   /* ---------- Intro ---------- */
   .overlay {
     position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px;
@@ -434,7 +517,20 @@
   /* ---------- Responsive ---------- */
   @media (max-width: 980px) {
     body { overflow: auto; height: auto; }
-    .app { grid-template-columns: 1fr; }
+    .app { grid-template-columns: 1fr; grid-template-rows: auto; }
+    .app > .panel { grid-column: 1; grid-row: 2; }
+    .panel { scroll-margin-top: max(44vh, 260px); }
+    .advisor { position: fixed; left: 8px; right: 8px; bottom: 8px; width: auto; }
+    .frame { width: 88px; height: 116px; }
+    .mono { font-size: 32px; }
+    .bubble { gap: 12px; padding: 12px; }
+    .say { min-height: 116px; }
+    .bubble p { font-size: 15.5px; }
+    body.adv-open .panel { padding-bottom: 300px; }
+    /* on phones the speech box already fills the bottom of the screen: just dim the sidebar */
+    .hush { grid-column: 1; grid-row: 2; padding: 16px 16px 0; }
+    .hush-card { display: none; }
+    .ask-again { position: fixed; left: 10px; bottom: 10px; }
     .mapwrap { height: 44vh; min-height: 260px; position: sticky; top: 0; z-index: 2; border-bottom: 1px solid var(--line); }
     .panel { border-left: 0; overflow: visible; }
     .trail-pips { display: none; }
@@ -487,9 +583,21 @@
       <button id="zall" class="wide" title="Show the whole map">Whole map</button>
     </div>
     <div class="toast" id="toast"></div>
+    <button class="ask-again" id="ask-again" hidden></button>
+    <div class="advisor" id="adv" hidden role="dialog" aria-live="polite" aria-labelledby="adv-who">
+      <div class="bubble">
+        <div class="frame"><img id="adv-img" alt="" hidden><div class="mono" id="adv-mono" aria-hidden="true"></div></div>
+        <div class="say">
+          <div class="who" id="adv-who"></div>
+          <p id="adv-text"></p>
+          <div class="foot"><span class="count" id="adv-count"></span><button class="btn small" id="adv-next">Next ▸</button></div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <aside class="panel" id="panel" aria-live="polite"></aside>
+  <div class="hush" id="hush" hidden></div>
 </div>
 
 <div class="overlay" id="intro">
@@ -499,7 +607,7 @@
     <h1 id="intro-h">Volunteers Wanted for a Journey into the Unknown</h1>
     <p>President Thomas Jefferson is sending a small army unit — the <b>Corps of Discovery</b> — up the Missouri River and across the continent to the Pacific Ocean. No American has ever made this trip. There are no maps. You are invited to go along.</p>
     <div class="steps">
-      <div><span class="n">I.</span><b>Travel</b>Follow the trail to 14 stops, from Washington to the Pacific and back.</div>
+      <div><span class="n">I.</span><b>Listen</b>At each of 14 stops, Jefferson, Lewis and Clark pop up on the map to tell you what is happening.</div>
       <div><span class="n">II.</span><b>Take the challenge</b>Pack the boat, face hard choices, match discoveries and more.</div>
       <div><span class="n">III.</span><b>Keep a journal</b>Like Lewis and Clark, write what you think. Turn it in at the end.</div>
     </div>
@@ -527,15 +635,31 @@ const ICON = {
   pen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 11-11-3-3L5 16z"/></svg>',
 };
 
+// the people who talk to the player; if a portrait fails to load, a medallion with their initials stands in
+const ADV = {
+  jefferson: { short: "Jefferson", name: "Thomas Jefferson", role: "President of the United States", mono: "TJ", c: "#3d4f7a", img: "portraits/jefferson.jpg" },
+  lewis:     { short: "Lewis", name: "Captain Meriwether Lewis", role: "Co-leader of the Corps of Discovery", mono: "ML", c: "#2e6b4f", img: "portraits/lewis.jpg" },
+  clark:     { short: "Clark", name: "Captain William Clark", role: "Co-leader of the Corps and its mapmaker", mono: "WC", c: "#b4572e", img: "portraits/clark.jpg" },
+  rush:      { short: "Dr. Rush", name: "Dr. Benjamin Rush", role: "Doctor and teacher in Philadelphia", mono: "BR", c: "#6b5a3a", img: "portraits/rush.jpg" },
+};
+for (const a of Object.values(ADV)) { const im = new Image(); im.onload = () => { a.ok = true; }; im.src = a.img; }
+
 const STOPS = [
 {
   id: "washington", short: "Washington, D.C.", leg: 0, when: "Spring 1803", place: "Washington, D.C.",
   title: "The President's Plan",
   story: [
-    "In January 1803, President <strong>Thomas Jefferson</strong> sent Congress a secret message asking for $2,500 to send a small group of soldiers to explore the West. To lead it, he chose his private secretary, Captain <strong>Meriwether Lewis</strong>. Lewis asked his old army friend <strong>William Clark</strong> to share command.",
-    "That same year the United States bought the huge <strong>Louisiana Territory</strong> from France for $15 million — doubling the size of the country overnight. Find it on the map: the gold-colored land. Beyond it, past the Rocky Mountains, lay Oregon Country, which no nation fully controlled.",
-    "Jefferson was a scientist as well as a president. His written orders told Lewis to <strong>map</strong> the rivers and land, to <strong>record</strong> the plants, animals, and weather, and to meet the <strong>Native nations</strong> along the way to talk about trade and peace.",
+    "In January 1803, Jefferson sent Congress a secret message asking for $2,500 to explore the West. He chose his private secretary, Captain <strong>Meriwether Lewis</strong>, to lead the trip. Lewis asked his old army friend <strong>William Clark</strong> to share command.",
+    "That same year the United States bought the huge <strong>Louisiana Territory</strong> from France for $15 million, doubling the size of the country. It is the gold-colored land on the map. Beyond it, past the Rocky Mountains, lay Oregon Country, which no nation fully controlled.",
+    "Jefferson was a scientist as well as a president. His written orders told Lewis to <strong>map</strong> the rivers and land, to <strong>record</strong> the plants, animals and weather, and to meet the <strong>Native nations</strong> along the way to talk about trade and peace.",
   ],
+  talk: [
+    ["jefferson", "Welcome. I am Thomas Jefferson, President of the United States. My diplomats in Paris have just agreed to buy a huge piece of land from France, called Louisiana. Look at the map: it is the gold-colored land."],
+    ["jefferson", "Louisiana doubles the size of our country, but no American knows what is out there. So I am sending a small team of soldiers to explore it, all the way to the Pacific Ocean. I call it the Corps of Discovery."],
+    ["lewis", "I am Captain Meriwether Lewis, the President's secretary. He has asked me to lead the Corps, and I am asking my old army friend, William Clark, to lead it with me."],
+    ["jefferson", "I have written out Captain Lewis's orders. Read about them in the sidebar, then show me that you know what this mission is for."],
+  ],
+  done: ["jefferson", "Good. Remember those orders, because you will need them. Now, Captain Lewis, off to Philadelphia. You have a great deal to learn, and a great deal to buy."],
   quote: { text: "The object of your mission is to explore the Missouri river… [and find] the most direct & practicable water communication across this continent for the purposes of commerce.", cite: "Jefferson's instructions to Lewis, June 20, 1803" },
   act: {
     type: "multi",
@@ -555,9 +679,15 @@ const STOPS = [
   id: "philadelphia", short: "Philadelphia", leg: 0, when: "May–June 1803", place: "Philadelphia, Pennsylvania",
   title: "Pack for the Unknown",
   story: [
-    "Philadelphia was America's science capital. Lewis took crash courses there: medicine from Dr. Benjamin Rush, plants from Benjamin Smith Barton, and how to find his location using the stars.",
-    "Then he went shopping. With no map of the West, Lewis had to guess what more than 30 people would need for two or more years in the wilderness.",
+    "Philadelphia was America's science capital. Lewis took crash courses there: medicine from <strong>Dr. Benjamin Rush</strong>, plants from Benjamin Smith Barton, and how to find his location using the stars.",
+    "Then he went shopping. With no map of the West, Lewis had to guess what more than 30 people would need for two or more years in the wilderness. Everything had to fit on one boat.",
   ],
+  talk: [
+    ["lewis", "Here in Philadelphia, the best scientists in America are teaching me. I am studying plants, medicine, and how to find where I am by looking at the stars."],
+    ["rush", "I am Dr. Benjamin Rush. Out West there will be no doctors, so Captain Lewis must be the doctor. I am sending along a box of my famous pills."],
+    ["lewis", "Now comes the hard part: packing. No one has made a map of the West, so I must guess what more than 30 people will need for two years. Help me fill the last crates on the boat."],
+  ],
+  done: ["lewis", "The crates are packed. Next I go to Pittsburgh, where our boat is being built. I hope the builder is faster than he promised!"],
   act: {
     type: "pack", slots: 7,
     prompt: "There's only room for 7 more crates on the keelboat. What do you pack?",
@@ -581,9 +711,15 @@ const STOPS = [
   id: "pittsburgh", short: "Pittsburgh", leg: 0, when: "August 31, 1803", place: "Pittsburgh, Pennsylvania",
   title: "Down the Ohio",
   story: [
-    "Lewis waited for weeks in Pittsburgh while a slow boatbuilder finished a <strong>55-foot keelboat</strong>. On August 31, 1803, he finally pushed off down the Ohio River.",
-    "Near Louisville, Kentucky, Clark came aboard — along with <strong>York</strong>, a man Clark enslaved, and several tough young Kentucky volunteers. Watch the trail follow the Ohio River west to the Mississippi.",
+    "Lewis waited six weeks in Pittsburgh while a slow boatbuilder finished a <strong>55-foot keelboat</strong>. On August 31, 1803, he finally pushed off down the Ohio River.",
+    "Near Louisville, Kentucky, Clark came aboard, along with <strong>York</strong>, a man Clark enslaved, and several tough young Kentucky volunteers. On the map, the trail follows the Ohio River west to the Mississippi.",
   ],
+  talk: [
+    ["lewis", "I waited six long weeks here while a slow boatbuilder finished our keelboat. She is 55 feet long. On August 31, 1803, we finally pushed off down the Ohio River."],
+    ["clark", "And I am Captain William Clark. I joined the boat near Louisville, Kentucky. I brought York, a man I held in slavery, and some tough young volunteers from Kentucky."],
+    ["clark", "Look at the map. Our trail follows the Ohio River west to the Mississippi. Why do you think we are traveling by river?"],
+  ],
+  done: ["clark", "Rivers are the roads of the West. Next we will spend the winter near St. Louis, getting our men ready."],
   act: {
     type: "mc",
     prompt: "Why did the expedition travel by river instead of over land?",
@@ -599,9 +735,16 @@ const STOPS = [
   id: "campwood", short: "Camp Wood", leg: 0, when: "Winter 1803–1804", date: new Date(1804, 4, 14), place: "Camp Wood, Illinois — across from the Missouri River",
   title: "Meet the Corps of Discovery",
   story: [
-    "The captains spent the winter at Camp Wood training their recruits — drilling, practicing shooting, and punishing troublemakers. In March 1804, Lewis watched in St. Louis as the American flag was raised over Upper Louisiana for the first time.",
-    "On <strong>May 14, 1804</strong>, the Corps pushed off up the Missouri River. A week later they left St. Charles — the last American town they would see for more than two years.",
+    "The captains spent the winter at Camp Wood training their recruits: drilling, practicing shooting, and punishing troublemakers. In March 1804, Lewis watched in St. Louis as the American flag was raised over Upper Louisiana for the first time.",
+    "On <strong>May 14, 1804</strong>, the Corps pushed off up the Missouri River. A week later they left St. Charles, the last American town they would see for more than two years.",
   ],
+  talk: [
+    ["clark", "We spent the winter here at Camp Wood, training our new soldiers. We drilled them, practiced shooting, and punished the troublemakers."],
+    ["lewis", "In March I watched in St. Louis as the American flag was raised over Upper Louisiana for the first time. That land belongs to the United States now."],
+    ["clark", "On May 14, 1804, we pushed off up the Missouri River. Soon we will pass the last American town we will see for more than two years."],
+    ["lewis", "Before we go, you should meet our team. Flip the cards in the sidebar."],
+  ],
+  done: ["lewis", "A fine crew, and a fine dog. Now, up the Missouri!"],
   act: {
     type: "cards",
     prompt: "Flip every card to meet some of the people (and one animal) on the expedition.",
@@ -620,8 +763,14 @@ const STOPS = [
   id: "floyd", short: "Floyd's Bluff", leg: 1, date: new Date(1804, 7, 20), place: "Near today's Sioux City, Iowa",
   title: "A Loss on the River",
   story: [
-    "In August, Sergeant Charles Floyd was struck by terrible stomach pain. Lewis tried every treatment he knew, but on <strong>August 20, 1804</strong>, Floyd died — most likely from a burst appendix. No doctor in 1804 could have saved him.",
+    "In August, Sergeant Charles Floyd was struck by terrible stomach pain. Lewis tried every treatment he knew, but on <strong>August 20, 1804</strong>, Floyd died, most likely from a burst appendix. No doctor in 1804 could have saved him.",
     "The men buried him on a hill above the river and named it Floyd's Bluff. A tall stone monument stands there today.",
+  ],
+  talk: [
+    ["clark", "This is a sad day. Sergeant Charles Floyd became very sick, with terrible pain in his stomach."],
+    ["lewis", "I tried every medicine I had, but nothing helped. He died today, most likely from a burst appendix. No doctor in the world could have saved him."],
+    ["clark", "We buried him on a hill above the river and named it Floyd's Bluff. What I wrote in my journal is in the sidebar."],
+    ["clark", "There are many dangers ahead of us. Make a guess: by the end of this trip, how many of us will have died?"],
   ],
   quote: { text: "Serj. Floyd Died with a great deal of Composure.", cite: "William Clark's journal, August 20, 1804" },
   act: {
@@ -639,10 +788,17 @@ const STOPS = [
   id: "sioux", short: "Bad River", leg: 1, date: new Date(1804, 8, 25), place: "Bad River, near today's Pierre, South Dakota",
   title: "Standoff at the Bad River",
   story: [
-    "The <strong>Lakota</strong> (also called Teton Sioux) were the most powerful nation on the Missouri. They controlled trade on the river and expected visitors to pay respect — and gifts. Jefferson especially wanted the Lakota as friends and trading partners.",
+    "The <strong>Lakota</strong> (also called Teton Sioux) were the most powerful nation on the Missouri. They controlled trade on the river and expected visitors to pay respect and bring gifts. Jefferson especially wanted the Lakota as friends and trading partners.",
     "The meeting went badly. Some Lakota warriors grabbed the rope of a Corps boat and demanded more gifts before letting the Americans pass. Clark drew his sword. Warriors strung their bows. On the keelboat, the men aimed a small cannon at the crowd.",
     "The Corps still had more than a thousand miles of river ahead, and it needed its trade goods for every nation it would meet along the way.",
   ],
+  talk: [
+    ["clark", "We have reached the Lakota, also called the Teton Sioux. They are the most powerful nation on the Missouri. They control trade on this river, and they expect visitors to show respect and bring gifts."],
+    ["lewis", "President Jefferson especially wants the Lakota as friends. But this meeting is going badly. Some warriors have grabbed the rope of our boat, and they want more gifts before they will let us pass."],
+    ["clark", "I have drawn my sword. Their warriors have strung their bows. On the keelboat, our men are aiming a small cannon at the crowd."],
+    ["lewis", "We still have more than a thousand miles to go, and we need our trade goods for every nation ahead. Captain Clark, the choice is yours. What do we do?"],
+  ],
+  done: ["clark", "Black Buffalo kept a cool head, and so did we. Nobody fired a shot. Now we keep moving north."],
   act: {
     type: "mc",
     prompt: "You are Captain Clark. Which choice gives the expedition the best chance to survive and keep going?",
@@ -660,10 +816,17 @@ const STOPS = [
   id: "mandan", short: "Fort Mandan", leg: 1, date: new Date(1804, 10, 2), place: "Fort Mandan, in today's North Dakota",
   title: "Winter with the Mandan & Hidatsa",
   story: [
-    "As the river began to freeze, the Corps built <strong>Fort Mandan</strong> beside the villages of the Mandan and Hidatsa — busy trading towns with more people than St. Louis. The temperature dropped to 40 below zero.",
+    "As the river began to freeze, the Corps built <strong>Fort Mandan</strong> beside the villages of the Mandan and Hidatsa, busy trading towns with more people than St. Louis. The temperature dropped to 40 below zero.",
     "Here the captains hired a French-Canadian trader, Toussaint Charbonneau, and his teenage Shoshone wife, <strong>Sacagawea</strong>, as interpreters. In February 1805 she gave birth to a son, Jean Baptiste, nicknamed 'Pomp,' who rode on her back the entire way.",
-    "In April, the Corps sent the keelboat back to Jefferson, loaded with maps, notes, and specimens — including a <strong>live prairie dog</strong>.",
+    "In April, the Corps sent the keelboat back to Jefferson, loaded with maps, notes and specimens, including a <strong>live prairie dog</strong>.",
   ],
+  talk: [
+    ["clark", "When the river began to freeze, we built a fort for the winter beside the villages of the Mandan and Hidatsa. These are busy trading towns, with more people than St. Louis!"],
+    ["lewis", "It was bitterly cold. Some nights the thermometer dropped to 40 degrees below zero."],
+    ["clark", "We hired a French-Canadian trader, Toussaint Charbonneau, and his teenage wife, Sacagawea, as interpreters. She is Shoshone. In February she had a baby boy, Jean Baptiste. We call him Pomp."],
+    ["lewis", "In the spring we sent our keelboat back to President Jefferson, full of maps, notes and animals no American scientist had ever seen. Can you match each animal to the way I described it?"],
+  ],
+  done: ["lewis", "A live prairie dog and four magpies made it all the way to the President! Now we head west, into land no American has ever mapped."],
   act: {
     type: "match",
     prompt: "Lewis described dozens of animals new to American science. Match each one to his description.",
@@ -682,8 +845,15 @@ const STOPS = [
   title: "The Grandest Sight",
   story: [
     "The Hidatsa had told the captains about a great waterfall. On June 13, 1805, Lewis heard a roar and saw spray rising like smoke.",
-    "But there wasn't just one waterfall — there were <strong>five</strong>. The men had to carry their canoes and tons of gear about <strong>18 miles</strong> around them, on wheels cut from a cottonwood tree, through cactus, hailstorms, and grizzly country. The day after he found the falls, Lewis was chased into the river by a grizzly bear.",
+    "But there wasn't just one waterfall. There were <strong>five</strong>. The men had to carry their canoes and tons of gear about <strong>18 miles</strong> around them, on wheels cut from a cottonwood tree, through cactus, hailstorms and grizzly country. The day after he found the falls, Lewis was chased into the river by a grizzly bear.",
   ],
+  talk: [
+    ["lewis", "The Hidatsa told us about a great waterfall ahead. Today I heard a roar and saw spray rising like smoke. It is the grandest sight I have ever seen."],
+    ["clark", "But there is not just one waterfall. There are five! We cannot paddle past them. We must carry our canoes and tons of supplies about 18 miles around them, over land."],
+    ["lewis", "We cut wheels from a cottonwood tree to roll the canoes. The ground is covered in cactus, the hail is the size of eggs, and there are grizzly bears everywhere. One chased me right into the river!"],
+    ["clark", "Make a guess: how many days will it take us to get past these falls?"],
+  ],
+  done: ["clark", "Thirty-two days to go 18 miles. The men are worn out, but we are past the falls and on the river again."],
   quote: { text: "…the grandest sight I ever beheld.", cite: "Meriwether Lewis, June 13, 1805" },
   act: {
     type: "slider", min: 1, max: 60, start: 10, answer: 32, unit: "days",
@@ -696,9 +866,16 @@ const STOPS = [
   title: "Where the Missouri Begins",
   story: [
     "Here the Missouri River splits into three rivers. The captains named them after President Jefferson, Secretary of State James Madison, and Treasury Secretary Albert Gallatin.",
-    "Sacagawea recognized this place. About five years earlier, Hidatsa raiders had attacked her Shoshone band right here and kidnapped her. Now the Corps badly needed <strong>horses</strong> to cross the mountains ahead — and only the Shoshone had them.",
+    "Sacagawea recognized this place. About five years earlier, Hidatsa raiders had attacked her Shoshone band right here and kidnapped her. Now the Corps badly needed <strong>horses</strong> to cross the mountains ahead, and only the Shoshone had them.",
     "Jefferson hoped the Missouri's source would be a short walk from a river flowing to the Pacific: carry the canoes for half a day, then paddle on to the ocean. But west of here rise the <strong>Rocky Mountains</strong>, far too high and wide for that. Along their crest runs the <strong>Continental Divide</strong>. Rain that falls east of it flows into the Missouri, then the Mississippi, then the Gulf of Mexico. Rain that falls west of it flows to the Pacific. No river crosses it.",
   ],
+  talk: [
+    ["clark", "Here the Missouri River splits into three rivers. We named them the Jefferson, the Madison and the Gallatin, after the President and two members of his government."],
+    ["lewis", "Sacagawea knows this place. About five years ago, Hidatsa raiders attacked her Shoshone band right here and kidnapped her."],
+    ["lewis", "President Jefferson hoped we could carry our canoes over a low hill near here and paddle on to the Pacific. But look west. Those are the Rocky Mountains, and they are enormous."],
+    ["clark", "Read the sidebar carefully, especially the part about the Continental Divide. Then tell us: how will we reach the Pacific?"],
+  ],
+  done: ["lewis", "So we need horses, and only the Shoshone have them. Sacagawea's people may be our only hope."],
   act: {
     type: "mc",
     prompt: "The Corps is paddling up the Jefferson River toward the mountains. Based on the reading, how will it reach the Pacific?",
@@ -718,6 +895,13 @@ const STOPS = [
     "Lewis went ahead and met a Shoshone band led by Chief <strong>Cameahwait</strong>. When Sacagawea arrived to help translate, she suddenly began to dance and cry for joy: Cameahwait was <strong>her brother</strong>.",
     "Partly thanks to her, the Shoshone traded about 29 horses to the Corps and sent a guide, called Old Toby, to lead them across the mountains.",
   ],
+  talk: [
+    ["lewis", "I went ahead and found a Shoshone band led by Chief Cameahwait. We need their horses badly, but talking with them is very hard."],
+    ["lewis", "When Sacagawea arrived to help translate, she began to dance and cry for joy. Chief Cameahwait is her brother!"],
+    ["clark", "Partly thanks to her, the Shoshone traded us about 29 horses and gave us a guide, Old Toby, to lead us across the mountains."],
+    ["clark", "But every message between us passed through five people and four languages. Can you put the chain in order, from Captain Lewis to the Chief?"],
+  ],
+  done: ["clark", "Four languages there, and four languages back. Talks took hours, but we got our horses. Now, over the mountains."],
   quote: { text: "…[she] began to dance and show every mark of the most extravagant joy.", cite: "Meriwether Lewis, August 17, 1805" },
   act: {
     type: "order",
@@ -739,9 +923,16 @@ const STOPS = [
   title: "Starving in the Bitterroots",
   story: [
     "Crossing the Bitterroot Mountains on the Lolo Trail took about <strong>11 brutal days</strong> in snow. Game disappeared. The men ate portable soup and some of their own horses.",
-    "Half-starved, they stumbled onto the Weippe Prairie, home of the <strong>Nez Perce</strong> (Nimíipuu). The Nez Perce could have taken the strangers' rifles. According to Nez Perce tradition, an elder woman named Watkuweis, who had once been treated kindly by white traders, told them: 'Do them no harm.'",
+    "Half-starved, they stumbled onto the Weippe Prairie, home of the <strong>Nez Perce</strong> (Nimíipuu). The Nez Perce could have taken the strangers' rifles. According to Nez Perce tradition, an elder woman named <strong>Watkuweis</strong>, who had once been treated kindly by white traders, told them: 'Do them no harm.'",
     "Instead of attacking, the Nez Perce fed the men dried salmon and camas roots, agreed to care for their horses through the winter, and showed them how to make dugout canoes for the trip down to the Columbia River.",
   ],
+  talk: [
+    ["clark", "Crossing the Bitterroot Mountains took 11 terrible days in the snow. There was almost nothing to hunt. We ate portable soup, and even some of our own horses."],
+    ["lewis", "Half-starved, we stumbled onto a prairie, the home of the Nez Perce. They had never met Americans before. They could easily have taken our rifles."],
+    ["clark", "Instead, they fed us dried salmon and camas roots. They agreed to care for our horses through the winter, and showed us how to make canoes."],
+    ["lewis", "The Nez Perce still tell a story about why they helped us. Read it in the sidebar, then answer the question."],
+  ],
+  done: ["lewis", "We owe the Nez Perce our lives. Now we build canoes and ride the rivers down to the Pacific."],
   quote: { text: "I have been wet and as cold in every part as I ever was in my life.", cite: "William Clark, September 16, 1805" },
   act: {
     type: "mc",
@@ -759,9 +950,16 @@ const STOPS = [
   id: "clatsop", short: "Fort Clatsop", leg: 3, date: new Date(1805, 10, 7), place: "Fort Clatsop, in today's Oregon",
   title: "“Ocian in View!”",
   story: [
-    "The Corps raced down the Snake and Columbia rivers. On November 7, 1805, Clark scribbled one of the most famous lines in American history — spelling and all.",
-    "Storms trapped them on the rocky shore for weeks. Where should they spend the winter? The captains did something remarkable: they let <strong>everyone vote</strong> — including York, an enslaved Black man, and Sacagawea, a Native woman. Neither group could vote in U.S. elections at the time.",
+    "The Corps raced down the Snake and Columbia rivers. On November 7, 1805, Clark wrote one of the most famous lines in American history, spelling and all.",
+    "Storms trapped them on the rocky shore for weeks. To decide where to spend the winter, the captains did something remarkable: they let <strong>everyone vote</strong>, including York, an enslaved Black man, and Sacagawea, a Native woman. Neither group could vote in U.S. elections at the time.",
   ],
+  talk: [
+    ["clark", "We raced down the Snake and Columbia rivers. On November 7, 1805, I wrote in my journal: “Ocian in view! O! the joy.” Yes, that is how I spelled it."],
+    ["lewis", "But storms have trapped us on this rocky shore for weeks. We are cold, wet and hungry, and we must decide where to spend the winter."],
+    ["clark", "So we are letting everyone vote, including York and Sacagawea. Neither of them could ever vote back home."],
+    ["lewis", "Now it is your turn. Cast your vote in the sidebar."],
+  ],
+  done: ["clark", "It rained on all but 12 days at Fort Clatsop. Still, we had a roof over our heads and plenty of elk to eat."],
   quote: { text: "Ocian in view! O! the joy.", cite: "William Clark, November 7, 1805" },
   act: {
     type: "vote",
@@ -779,9 +977,15 @@ const STOPS = [
   id: "blackfeet", short: "Two Medicine River", leg: 3, date: new Date(1806, 6, 27), place: "Two Medicine River, in today's Montana",
   title: "Splitting Up",
   story: [
-    "In March 1806 the Corps started home. Past the Bitterroots, the captains did something risky: they <strong>split up</strong> to explore more land. Watch the red lines appear on the map — <b>L</b> marks Lewis's route, <b>C</b> marks Clark's.",
+    "In March 1806 the Corps started home. Past the Bitterroots, the captains did something risky: they <strong>split up</strong> to explore more land. On the map, <b>L</b> marks Lewis's route and <b>C</b> marks Clark's.",
     "Clark headed south along the Yellowstone River, where he carved his name in a sandstone tower he called Pompy's Tower, after Sacagawea's son. You can still see it today.",
-    "Lewis went north to explore the Marias River. On July 27, 1806, his small group camped with eight young <strong>Blackfeet</strong> men. At dawn the Blackfeet tried to take their guns and horses. In the fight, two Blackfeet men were killed — the only deadly violence of the expedition.",
+    "Lewis went north to explore the Marias River. On July 27, 1806, his small group camped with eight young <strong>Blackfeet</strong> men. At dawn the Blackfeet tried to take their guns and horses. In the fight, two Blackfeet men were killed: the only deadly violence of the expedition.",
+  ],
+  talk: [
+    ["lewis", "In March we started for home. After we crossed the Bitterroot Mountains again, Captain Clark and I split up, so that we could explore more land."],
+    ["clark", "Look at the map. The red lines are our two routes: L marks Captain Lewis's, and C marks mine. I went south along the Yellowstone River and carved my name on a sandstone tower. I named it Pompy's Tower, after Sacagawea's son."],
+    ["lewis", "I went north with a few men to explore the Marias River. We camped with eight young Blackfeet men. At dawn they tried to take our guns and horses, and in the fight, two of them were killed."],
+    ["lewis", "Find my route on the map. Click the route I took north."],
   ],
   act: {
     type: "route",
@@ -794,9 +998,16 @@ const STOPS = [
   id: "stlouis", short: "St. Louis", leg: 3, date: new Date(1806, 8, 23), place: "St. Louis — the end of the trail",
   title: "Home at Last",
   story: [
-    "The two groups met up again on August 12, 1806 — one day after Pierre Cruzatte, a one-eyed fiddler, accidentally shot Lewis in the backside while hunting. (Lewis survived, embarrassed.)",
+    "The two groups met up again on August 12, 1806, one day after Pierre Cruzatte, a one-eyed fiddler, accidentally shot Lewis in the backside while hunting. (Lewis survived, embarrassed.)",
     "Racing downstream with the current, they reached St. Louis on <strong>September 23, 1806</strong>. Many people had given them up for dead. They had traveled about <strong>8,000 miles</strong> in 28 months.",
   ],
+  talk: [
+    ["clark", "Our two groups found each other again on August 12, 1806. We were very glad to see each other."],
+    ["lewis", "The day before, Pierre Cruzatte, our one-eyed fiddler, mistook me for an elk and shot me in the backside. I will heal, but I may never live it down."],
+    ["clark", "With the current behind us, we raced downstream. On September 23, 1806, we reached St. Louis. Many people thought we were dead! We had traveled about 8,000 miles in 28 months."],
+    ["jefferson", "Welcome home, Captains. I have waited a long time for your report. So tell me: did you find the all-water route across the continent that I hoped for?"],
+  ],
+  done: ["jefferson", "No water route, then. But you brought back maps, science, and knowledge of the West that will change this nation. Well done, all of you."],
   act: {
     type: "mc",
     prompt: "Did the expedition find what Jefferson wanted most — an all-water route across the continent?",
@@ -812,7 +1023,7 @@ const STOPS = [
 
 /* ===================== State ===================== */
 const KEY = "lc-webquest-v1";
-const blank = () => ({ name: "", unlocked: 0, results: {}, journals: {}, finished: false });
+const blank = () => ({ name: "", unlocked: 0, results: {}, journals: {}, heard: {}, finished: false });
 let S = blank();
 try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.results) S = Object.assign(blank(), s); } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
@@ -822,6 +1033,8 @@ const words = t => (t || "").trim().split(/\s+/).filter(Boolean).length;
 const journalOk = st => !st.journal || words(S.journals[st.id]) >= JOURNAL_MIN;
 const actDone = st => !!S.results[st.id];
 const stopDone = st => actDone(st) && journalOk(st);
+// a stop finished before the speakers were added counts as heard
+const heard = st => !!(S.heard[st.id] || S.results[st.id]);
 const maxPts = STOPS.reduce((a, s) => a + 10 + (s.journal ? 10 : 0), 0);
 const points = () => STOPS.reduce((a, s) => a + (S.results[s.id] ? S.results[s.id].pts : 0) + (s.journal && journalOk(s) ? 10 : 0), 0);
 
@@ -1121,7 +1334,7 @@ function setPick(handler) {
 if (map) ["main", "lewis", "clark", "home"].forEach(k => {
   map.on("mouseenter", "hit-" + k, () => { if (!picking) return; map.getCanvas().style.cursor = "pointer"; if (k === "lewis" || k === "clark") paint("ret-" + k, "line-color", "#d49a2a"); });
   map.on("mouseleave", "hit-" + k, () => { if (!picking) return; map.getCanvas().style.cursor = ""; if (k === "lewis" || k === "clark") paint("ret-" + k, "line-color", "#b8442f"); });
-  map.on("click", "hit-" + k, () => picking && picking(k));
+  map.on("click", "hit-" + k, () => picking && !talkQ && picking(k));
 });
 
 let toastT;
@@ -1163,12 +1376,100 @@ function bumpPoints(n) {
   toast(`+${n} Discovery Points`);
 }
 
+/* ===================== People who speak ===================== */
+const adv = $("#adv"), advText = $("#adv-text"), askAgain = $("#ask-again");
+const plain = t => String(t).replace(/<[^>]+>/g, "");
+// small round faces zoom in on the painting, so the face fills the circle
+const faceHTML = w => { const a = ADV[w]; return a.ok ? `<span class="face pic" style="background-image:url('${a.img}')" aria-hidden="true"></span>` : `<span class="face" style="--c:${a.c}" aria-hidden="true">${a.mono}</span>`; };
+const speakers = lines => [...new Set(lines.map(l => l[0]))];
+let talkQ = null;
+// the sidebar steps back and says who is speaking
+function hushFor(lines) {
+  const who = speakers(lines), hush = $("#hush");
+  const names = who.length > 1 ? (who.length === 2 ? `${ADV[who[0]].short} and ${ADV[who[1]].short} are speaking` : "The captains are speaking") : `${ADV[who[0]].short} is speaking`;
+  hush.innerHTML = `<div class="hush-card"><div class="faces">${who.map(faceHTML).join("")}</div><b>${esc(names)}</b>
+    <span><span class="arrow">◀</span>Read the message on the map, then click <em>Next</em>.</span></div>`;
+  hush.hidden = false;
+}
+// focus: the speakers are setting up a stop, so the sidebar waits until they finish
+function talk(lines, onDone, focus) {
+  clearInterval(talkQ && talkQ.typing);
+  talkQ = { lines, i: 0, onDone, typing: null, focus };
+  askAgain.hidden = true;
+  adv.classList.remove("out"); adv.hidden = false;
+  document.body.classList.add("adv-open");
+  if (focus) hushFor(lines); else $("#hush").hidden = true;
+  showLine();
+}
+function showLine() {
+  const q = talkQ, [who, text] = q.lines[q.i], a = ADV[who];
+  const img = $("#adv-img"), mono = $("#adv-mono");
+  if (q.i && who !== q.lines[q.i - 1][0] && !reduceMotion) $(".frame").animate([{ opacity: 0 }, { opacity: 1 }], { duration: 280, easing: "ease" });
+  if (a.ok) { img.src = a.img; img.alt = `Portrait of ${a.name}`; img.hidden = false; mono.hidden = true; }
+  else { img.hidden = true; mono.hidden = false; mono.textContent = a.mono; mono.style.setProperty("--c", a.c); }
+  $("#adv-who").innerHTML = `${esc(a.name)}<small>${esc(a.role)}</small>`;
+  $("#adv-count").textContent = q.lines.length > 1 ? `${q.i + 1} of ${q.lines.length}` : "";
+  const last = q.i === q.lines.length - 1;
+  $("#adv-next").textContent = last ? (q.focus ? "Got it ✓" : "Close ✓") : "Next ▸";
+  const full = plain(text);
+  clearInterval(q.typing); q.typing = null;
+  if (reduceMotion) { advText.textContent = full; return; }
+  // make room for the whole line first, so the box eases to its new size instead of jumping as words appear
+  const from = advText.offsetHeight;
+  advText.style.transition = "none"; advText.style.minHeight = "0"; advText.textContent = full;
+  const to = advText.offsetHeight;
+  advText.textContent = ""; advText.style.minHeight = (q.i ? from : to) + "px";
+  void advText.offsetHeight;
+  advText.style.transition = ""; advText.style.minHeight = to + "px";
+  // the words appear as if spoken
+  let n = 0;
+  q.typing = setInterval(() => { n += 2; advText.textContent = full.slice(0, n); if (n >= full.length) { clearInterval(q.typing); q.typing = null; } }, 16);
+}
+$("#adv-next").onclick = () => {
+  const q = talkQ; if (!q) return;
+  if (q.typing) { clearInterval(q.typing); q.typing = null; advText.textContent = plain(q.lines[q.i][1]); return; }
+  if (q.i < q.lines.length - 1) { q.i++; showLine(); return; }
+  closeTalk();
+  if (q.onDone) q.onDone();
+  // the sidebar takes over: back to its top, with a brief glow to show where to look next
+  if (q.focus) {
+    panel.scrollTop = 0;
+    if (innerWidth <= 980) panel.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+    panel.classList.remove("wake"); void panel.offsetWidth; panel.classList.add("wake");
+  }
+};
+function closeTalk(silent) {
+  if (!talkQ && adv.hidden) return;
+  if (talkQ) clearInterval(talkQ.typing);
+  talkQ = null;
+  document.body.classList.remove("adv-open");
+  $("#hush").hidden = true; $("#hush").classList.remove("now");
+  if (silent || reduceMotion) { adv.hidden = true; return; }
+  adv.classList.add("out");
+  setTimeout(() => { if (!talkQ) adv.hidden = true; }, 300);
+}
+function offerAgain(st) {
+  const who = speakers(st.talk);
+  askAgain.innerHTML = `<span class="faces">${who.map(faceHTML).join("")}</span>` + (who.length > 1 ? "Hear them again" : `Hear ${esc(ADV[who[0]].short)} again`);
+  askAgain.hidden = false;
+  askAgain.onclick = () => talk(st.talk, () => offerAgain(st), true);
+}
+// the speakers are done: open the challenge
+function unlock(st) {
+  S.heard[st.id] = true; save();
+  const ch = $("#challenge"); if (!ch) return;
+  ch.classList.remove("wait");
+  const l = ch.querySelector(".locked"); if (l) l.remove();
+  renderNext();
+}
+
 /* ===================== Panel ===================== */
 function openStop(i, fromUser) {
   if (traveling) return;
   if (i > S.unlocked) { toast("Finish the stops before this one first."); return; }
   viewing = i;
   const st = STOPS[i];
+  closeTalk(true); askAgain.hidden = true;
   if (picking) setPick(null);
   refreshChrome();
   focusStop(i);
@@ -1180,8 +1481,9 @@ function openStop(i, fromUser) {
     <p class="place">${esc(st.place)} · ${st.date ? fmtDate(st.date) : st.when}</p>
     <div class="story">${st.story.map(p => `<p>${p}</p>`).join("")}</div>
     ${st.quote ? `<blockquote>${esc(st.quote.text)}<cite>— ${esc(st.quote.cite)}</cite></blockquote>` : ""}
-    <section class="challenge" id="challenge">
+    <section class="challenge${heard(st) ? "" : " wait"}" id="challenge">
       <div class="challenge-h"><span class="badge">${ICON.star}</span><h3>Challenge</h3><span class="pts" id="ch-pts">${res ? res.pts + " / 10 pts" : "10 pts"}</span></div>
+      ${heard(st) ? "" : `<div class="locked">${faceHTML(st.talk[st.talk.length - 1][0])}Listen to ${esc(ADV[st.talk[st.talk.length - 1][0]].short)} first. Click “Next” in the pop-up on the map.</div>`}
       <div id="act"></div>
     </section>
     ${st.journal ? journalHTML(st) : ""}
@@ -1192,6 +1494,11 @@ function openStop(i, fromUser) {
   ACTS[st.act.type](st, $("#act"), res);
   if (st.journal) wireJournal(st);
   renderNext();
+  if (!heard(st)) {
+    // the sidebar is already dimmed when the stop opens, before the speakers arrive
+    $("#hush").classList.add("now"); hushFor(st.talk);
+    setTimeout(() => { if (viewing === i) talk(st.talk, () => { unlock(st); offerAgain(st); }, true); }, reduceMotion ? 0 : 700);
+  } else offerAgain(st);
 }
 
 function journalHTML(st) {
@@ -1220,7 +1527,8 @@ function renderNext() {
   if (!nb) return;
   const last = i === STOPS.length - 1;
   let todo = "";
-  if (!actDone(st)) todo = "Complete the challenge to continue.";
+  if (!heard(st)) { const w = speakers(st.talk).map(k => ADV[k].short); todo = `Listen to ${w.length > 2 ? w.slice(0, -1).join(", ") + " and " + w[w.length - 1] : w.join(" and ")} first.`; }
+  else if (!actDone(st)) todo = "Complete the challenge to continue.";
   else if (!journalOk(st)) todo = "Write your journal entry to continue.";
   const can = !todo;
   if (S.finished && last) {
@@ -1243,7 +1551,7 @@ async function advance(i) {
   if (S.unlocked < ni) {
     S.unlocked = ni; save();
     travelingTo = ni; viewing = null;
-    setPick(null);
+    setPick(null); closeTalk(true); askAgain.hidden = true;
     panel.innerHTML = `<div class="panel-inner"><div class="eyebrow"><span class="chip">On the trail…</span></div><h2>Traveling to ${esc(nx.short)}</h2><p class="place">${nx.date ? fmtDate(nx.date) : nx.when}</p></div>`;
     refreshChrome();
     if (nx.id === "blackfeet") await travelHome(1, st, nx);
@@ -1262,6 +1570,7 @@ function complete(st, pts, summary) {
   refreshChrome();
   renderNext();
   setTimeout(() => { const f = $("#act #fb") || $("#act"); f && f.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" }); }, 60);
+  if (st.done) setTimeout(() => { if (STOPS[viewing] === st) talk([st.done], () => offerAgain(st)); }, reduceMotion ? 0 : 900);
 }
 const fb = (cls, html) => `<div class="feedback ${cls}">${html}</div>`;
 const reviewBanner = res => `<div class="done-banner">${ICON.check.replace("<svg", '<svg width="18" height="18"')} Completed · ${res.pts} points${res.summary ? " · " + esc(res.summary) : ""}</div>`;
@@ -1474,6 +1783,7 @@ function medalSVG(rk, n) {
 }
 function finale() {
   viewing = null; refreshChrome();
+  closeTalk(true); askAgain.hidden = true;
   fitFull(1200);
   drawTrail(TRAIL.len); drawReturn(2);
   placePin(D.stlouis);
