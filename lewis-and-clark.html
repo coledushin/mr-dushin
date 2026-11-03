@@ -415,7 +415,6 @@
   .say { flex: 1; min-width: 0; min-height: 150px; display: flex; flex-direction: column; }
   .bubble .who { font-family: var(--serif); font-size: 22px; line-height: 1.1; }
   .bubble .who small { display: block; font-family: "Nunito", sans-serif; font-size: 12.5px; font-weight: 700; color: var(--muted); }
-  .bubble .who small.credit { font-weight: 600; font-style: italic; font-size: 12px; }
   .bubble p { margin: 6px 0 8px; font-size: 16.5px; line-height: 1.45; flex: 1; }
   #adv-text { transition: min-height .28s ease; }
   .bubble .foot { display: flex; align-items: center; gap: 10px; }
@@ -642,9 +641,8 @@ const ADV = {
   lewis:     { short: "Lewis", name: "Captain Meriwether Lewis", role: "Co-leader of the Corps of Discovery", mono: "ML", c: "#2e6b4f", img: "portraits/lewis.jpg" },
   clark:     { short: "Clark", name: "Captain William Clark", role: "Co-leader of the Corps and its mapmaker", mono: "WC", c: "#b4572e", img: "portraits/clark.jpg" },
   rush:      { short: "Dr. Rush", name: "Dr. Benjamin Rush", role: "Doctor and teacher in Philadelphia", mono: "BR", c: "#6b5a3a", img: "portraits/rush.jpg" },
-  // no one painted these two in their lifetimes; the credit tells students the picture was imagined later
-  sacagawea: { short: "Sacagawea", name: "Sacagawea", role: "Shoshone interpreter", mono: "S", c: "#7a4a2a", img: "portraits/sacagawea.jpg", credit: "Imagined by artist Edgar S. Paxson in 1912" },
-  york:      { short: "York", name: "York", role: "Member of the Corps, enslaved by Captain Clark", mono: "Y", c: "#5b4a8a", img: "portraits/york.jpg", credit: "Imagined by artist Charles M. Russell in 1908" },
+  sacagawea: { short: "Sacagawea", name: "Sacagawea", role: "Shoshone interpreter", mono: "S", c: "#7a4a2a", img: "portraits/sacagawea.jpg" },
+  york:      { short: "York", name: "York", role: "Member of the Corps, enslaved by Captain Clark", mono: "Y", c: "#5b4a8a", img: "portraits/york.jpg" },
 };
 for (const a of Object.values(ADV)) { const im = new Image(); im.onload = () => { a.ok = true; }; im.src = a.img; }
 
@@ -1418,7 +1416,7 @@ function showLine() {
   if (q.i && who !== q.lines[q.i - 1][0] && !reduceMotion) $(".frame").animate([{ opacity: 0 }, { opacity: 1 }], { duration: 280, easing: "ease" });
   if (a.ok) { img.src = a.img; img.alt = `Portrait of ${a.name}`; img.hidden = false; mono.hidden = true; }
   else { img.hidden = true; mono.hidden = false; mono.textContent = a.mono; mono.style.setProperty("--c", a.c); }
-  $("#adv-who").innerHTML = `${esc(a.name)}<small>${esc(a.role)}</small>${a.credit && a.ok ? `<small class="credit">${esc(a.credit)}</small>` : ""}`;
+  $("#adv-who").innerHTML = `${esc(a.name)}<small>${esc(a.role)}</small>`;
   $("#adv-count").textContent = q.lines.length > 1 ? `${q.i + 1} of ${q.lines.length}` : "";
   const last = q.i === q.lines.length - 1;
   $("#adv-next").textContent = last ? (q.focus ? "Got it ✓" : "Close ✓") : "Next ▸";
