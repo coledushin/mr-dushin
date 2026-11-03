@@ -887,13 +887,20 @@ const yearsOf = k => ALL[k].site ? ALL[k].years : YEARS.filter(y => featsOf(y, k
 document.addEventListener("focusin", e => document.body.classList.toggle("typing", !!e.target.closest(".panel input, .panel textarea")));
 document.addEventListener("focusout", () => document.body.classList.remove("typing"));
 
+// the hunt keeps its scroll position while a student visits the atlas and comes back
+// (the panel scrolls on wide screens, the whole page on phones)
+const scroller = () => innerWidth <= 980 ? document.scrollingElement : $("#panel");
+let shownTab = null, huntScroll = 0;
 function renderPane() {
+  if (shownTab === "hunt" && tab !== "hunt") huntScroll = scroller().scrollTop;
   $("#tab-atlas").setAttribute("aria-selected", tab === "atlas");
   $("#tab-hunt").setAttribute("aria-selected", tab === "hunt");
   const p = $("#pane");
   if (tab === "hunt") renderHunt(p);
   else if (selKey) renderCard(p, selKey);
   else renderYear(p);
+  if (tab === "hunt" && shownTab && shownTab !== "hunt") scroller().scrollTop = huntScroll;
+  shownTab = tab;
   updateCounts();
 }
 
