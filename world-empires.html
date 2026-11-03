@@ -929,7 +929,7 @@ function renderHunt(p) {
   p.innerHTML = `
     <p class="eyebrow">Scavenger hunt</p>
     <h2 class="pt">Find the clues</h2>
-    <p class="lede">Every answer is in the atlas: pick the right year, click the right state, and read its page. Close spelling counts. Stuck? A hint takes you to the year; a second hint opens the right page. Your teacher will see how many hints you used.</p>
+    <p class="lede">Every answer is in the atlas: pick the right year, click the right state, and read its page. Close spelling counts. Stuck? A hint takes you to the year; a second hint opens the right page..</p>
     <div class="progress"><i style="width:${n / HUNT.length * 100}%"></i></div>
     ${HUNT.map((h, i) => {
       const a = S.answers[i] || {};
