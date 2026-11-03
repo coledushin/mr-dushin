@@ -1,0 +1,1084 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Empires of the World</title>
+<link rel="icon" href="icons/globe.svg">
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
+<script>if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));</script>
+<link rel="stylesheet" href="vendor/maplibre-gl/maplibre-gl.css">
+<script src="vendor/maplibre-gl/maplibre-gl.js" defer></script>
+<link rel="preload" href="world-empires-map.json?v=3" as="fetch" crossorigin>
+<script>
+  // borders for every year of the timeline load alongside the page and fill in when ready;
+  // bump ?v= whenever the map file changes, so browsers don't keep an old copy
+  window.MAP_DATA = (async () => {
+    // a slow or dropped connection gets several tries before the map gives up
+    for (let i = 0; i < 4; i++) {
+      try {
+        const stop = new AbortController(), timer = setTimeout(() => stop.abort(), 45000);
+        const r = await fetch("world-empires-map.json?v=3", { signal: stop.signal });
+        const data = r.ok ? await r.json() : null;
+        clearTimeout(timer);
+        if (data) return data;
+      } catch (e) {}
+      await new Promise(r => setTimeout(r, 2000 * (i + 1)));
+    }
+    return null;
+  })();
+</script>
+<style>
+  :root {
+    --paper: #f3ead7;
+    --paper-2: #fbf7ec;
+    --card: #fffdf7;
+    --ink: #2b2118;
+    --muted: #6f604e;
+    --line: #e3d5b9;
+    --rust: #b4572e;
+    --rust-dark: #8f3f1f;
+    --green: #2e6b4f;
+    --green-soft: #e3efe6;
+    --gold: #d49a2a;
+    --gold-soft: #fbefd3;
+    --red: #b8442f;
+    --red-soft: #f8e1da;
+    --shadow: 0 1px 2px rgba(60,40,10,.08), 0 8px 24px rgba(60,40,10,.10);
+    --serif: "IM Fell English", Georgia, serif;
+    --sc: "IM Fell English SC", "IM Fell English", Georgia, serif;
+    --hand: "Caveat", "Segoe Print", cursive;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--paper); color: var(--ink);
+    font: 17px/1.55 "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  button:focus-visible, [tabindex]:focus-visible, input:focus-visible, textarea:focus-visible {
+    outline: 3px solid var(--gold); outline-offset: 2px;
+  }
+  [hidden] { display: none !important; }
+
+  /* ---------- Top bar ---------- */
+  .topbar { display: flex; align-items: center; gap: 16px; padding: 10px 18px; background: #2b2118; color: #f6ecd6; flex-shrink: 0; }
+  .topbar a.home { color: #e8d9b8; text-decoration: none; font-weight: 700; font-size: 15px; white-space: nowrap; }
+  .topbar a.home:hover { color: #fff; }
+  .brand { font-family: var(--serif); font-size: 22px; letter-spacing: .01em; white-space: nowrap; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .stats { display: flex; gap: 10px; }
+  .stat { background: rgba(255,255,255,.08); border-radius: 10px; padding: 3px 12px; font-size: 13px; line-height: 1.25; text-align: center; white-space: nowrap; }
+  .stat b { display: block; font-size: 17px; color: #fff; }
+  .stat .short { display: none; }
+  .stat.bump b { animation: bump .6s ease; }
+  @keyframes bump { 30% { transform: scale(1.35); color: var(--gold); } }
+  .save-btn {
+    display: flex; align-items: center; gap: 5px; border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); color: #f6ecd6;
+    border-radius: 10px; padding: 6px 12px; font-weight: 800; font-size: 14px; white-space: nowrap;
+  }
+  .save-btn:hover:not(:disabled) { background: rgba(255,255,255,.18); color: #fff; }
+  .save-btn:disabled { opacity: .6; cursor: wait; }
+
+  /* ---------- Layout ---------- */
+  .app { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 460px; grid-template-rows: minmax(0, 1fr); min-height: 0; }
+  .app > .mapwrap { grid-column: 1; grid-row: 1; }
+  .app > .panel { grid-column: 2; grid-row: 1; }
+  .mapwrap { position: relative; min-height: 0; overflow: hidden; background: #ece1c6; touch-action: none; }
+  .mapwrap::after { content: ""; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 90px rgba(90,60,20,.22); z-index: 1; }
+  #map { position: absolute; inset: 0; background: radial-gradient(circle at 50% 45%, #2b3a4a, #121a24 70%); }
+  .maplibregl-ctrl-attrib { font-size: 11px; }
+  .map-off { display: none; }
+  .no-map #map, .no-map .map-ui { display: none; }
+  .no-map .map-off {
+    display: grid; place-content: center; gap: 8px; position: absolute; inset: 0; padding: 24px;
+    text-align: center; color: var(--muted); font-weight: 700; font-size: 15px;
+  }
+  @media (max-width: 980px) { .mapwrap.no-map { height: 150px; min-height: 0; } }
+
+  /* the year and its headline, like a title cartouche on an old atlas */
+  .cartouche {
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 3; text-align: center; pointer-events: none;
+    background: rgba(251,247,236,.94); border: 1px solid #c9b48a; border-radius: 6px; padding: 6px 20px 7px;
+    box-shadow: 0 0 0 3px rgba(251,247,236,.6), 0 0 0 4px #c9b48a, 0 6px 18px rgba(30,20,10,.3); max-width: calc(100% - 140px);
+  }
+  .cartouche b { display: block; font-family: var(--serif); font-weight: 400; font-size: 30px; line-height: 1.05; letter-spacing: .03em; }
+  .cartouche small { display: block; font-family: var(--serif); font-style: italic; font-size: 15px; color: var(--muted); line-height: 1.25; }
+  .zoom { position: absolute; right: 12px; top: 12px; z-index: 3; display: flex; flex-direction: column; gap: 6px; }
+  .zoom button {
+    width: 38px; height: 38px; border-radius: 10px; border: 1px solid #c9b48a; background: rgba(251,247,236,.95);
+    font-size: 21px; font-weight: 800; line-height: 1; box-shadow: var(--shadow);
+  }
+  .zoom button:hover { background: #fff; }
+
+  /* ---------- Timeline ---------- */
+  .timeline {
+    position: absolute; left: 14px; right: 14px; bottom: 14px; z-index: 3;
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px 8px;
+    background: rgba(251,247,236,.95); border: 1px solid #c9b48a; border-radius: 12px; box-shadow: 0 6px 18px rgba(30,20,10,.3);
+  }
+  .tl-step {
+    flex-shrink: 0; width: 38px; height: 38px; border-radius: 50%; border: 1px solid #c9b48a; background: #fff;
+    font-size: 16px; font-weight: 900; color: var(--rust-dark); display: grid; place-items: center;
+  }
+  .tl-step:hover:not(:disabled) { background: var(--gold-soft); }
+  .tl-step:disabled { opacity: .35; cursor: default; }
+  .track { position: relative; flex: 1; height: 50px; touch-action: none; cursor: pointer; }
+  .track .rail { position: absolute; left: 0; right: 0; top: 17px; height: 6px; border-radius: 99px; background: #e6d7b6; box-shadow: inset 0 1px 2px rgba(60,40,10,.25); }
+  .track .fill { position: absolute; left: 0; top: 17px; height: 6px; border-radius: 99px; background: linear-gradient(90deg, #c98a2c, var(--rust)); transition: width .35s ease; }
+  .track .tick { position: absolute; top: 25px; width: 1px; height: 5px; background: #b9a275; }
+  /* the 14px dot's centre sits on the rail's centre line (17px + 3px) */
+  .yr {
+    position: absolute; top: 13px; transform: translateX(-50%); border: 0; background: none; padding: 0; width: 34px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .yr i { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 3px solid #b9a275; transition: transform .2s, border-color .2s, background .2s; }
+  .yr span { font-size: 12.5px; font-weight: 800; color: var(--muted); letter-spacing: .02em; }
+  .yr.past i { border-color: var(--rust); }
+  .yr:hover i { transform: scale(1.25); }
+  .yr.on i { background: var(--rust); border-color: #fff; box-shadow: 0 0 0 2px var(--rust), 0 2px 6px rgba(0,0,0,.3); transform: scale(1.45); }
+  .yr.on span { color: var(--ink); font-size: 14px; }
+
+  /* ---------- Side panel ---------- */
+  .panel { background: var(--paper-2); border-left: 1px solid var(--line); overflow: auto; min-height: 0; display: flex; flex-direction: column; }
+  .ptabs { display: flex; gap: 0; position: sticky; top: 0; z-index: 2; background: var(--paper-2); border-bottom: 1px solid var(--line); }
+  .ptab {
+    flex: 1; border: 0; background: none; padding: 12px 10px 10px; font-weight: 800; font-size: 15px; color: var(--muted);
+    border-bottom: 3px solid transparent; display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .ptab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--rust); }
+  .ptab .badge { background: var(--rust); color: #fff; border-radius: 99px; font-size: 12px; padding: 1px 8px; }
+  .panel-inner { padding: 22px 26px 40px; }
+  h2.pt { font-family: var(--serif); font-weight: 400; font-size: 30px; line-height: 1.12; margin: 0 0 4px; }
+  .eyebrow { font-size: 12.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--rust); margin: 0 0 4px; }
+  .lede { color: var(--muted); margin: 6px 0 16px; }
+  .how { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin: 0 0 18px; font-size: 15px; }
+  .how b { color: var(--rust-dark); }
+  .how ol { margin: 4px 0 0; padding-left: 20px; }
+  .list-h { font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
+  .chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .chip {
+    display: flex; align-items: center; gap: 8px; text-align: left; border: 1px solid var(--line); background: var(--card);
+    border-radius: 8px; padding: 6px 9px; font-size: 14px; font-weight: 700; line-height: 1.2;
+  }
+  .chip:hover { border-color: #c9b48a; background: #fff; }
+  .chip i { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+  .chip.site i { border-radius: 50%; }
+  .region-h { grid-column: 1 / -1; font-size: 12px; font-weight: 800; color: var(--muted); margin: 6px 0 0; }
+
+  /* the state card */
+  .card-top { display: flex; gap: 14px; align-items: flex-start; }
+  .seal { width: 54px; height: 54px; border-radius: 50%; flex-shrink: 0; box-shadow: inset 0 0 0 3px rgba(255,255,255,.55), 0 0 0 2px rgba(60,40,10,.35), 0 3px 8px rgba(60,40,10,.25);
+          display: grid; place-items: center; font-family: var(--serif); font-size: 26px; color: rgba(40,25,10,.75); }
+  .back { border: 0; background: none; padding: 0; color: var(--rust-dark); font-weight: 800; font-size: 14px; margin: 0 0 12px; }
+  .back:hover { text-decoration: underline; }
+  .dates { font-family: var(--serif); font-style: italic; color: var(--muted); font-size: 17px; margin: 0; }
+  .facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 16px 0; padding: 12px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; font-size: 15px; }
+  .facts dt { font-weight: 800; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .05em; padding-top: 2px; }
+  .facts dd { margin: 0; }
+  .know { margin: 0 0 14px; padding-left: 20px; }
+  .know li { margin: 0 0 8px; }
+  .know b { color: var(--rust-dark); }
+  .note {
+    position: relative; background: #fff8e3; border: 1px solid #ecd9a6; border-radius: 4px; padding: 14px 16px 12px; margin: 0 0 20px;
+    font-family: var(--hand); font-size: 22px; line-height: 1.2; color: #3a2e20; box-shadow: 0 2px 6px rgba(60,40,10,.12); transform: rotate(-.6deg);
+  }
+  .note::before { content: "Field note"; display: block; font-family: "Nunito", sans-serif; font-size: 11.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--rust); margin-bottom: 2px; }
+  .years-on { display: flex; flex-wrap: wrap; gap: 6px; }
+  .years-on button { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 3px 10px; font-weight: 800; font-size: 14px; }
+  .years-on button.on { background: var(--rust); color: #fff; border-color: var(--rust); }
+  .years-on button:hover:not(.on) { border-color: #c9b48a; background: #fff; }
+  .off-map { background: var(--gold-soft); border-radius: 10px; padding: 8px 12px; font-size: 14.5px; margin: 0 0 12px; }
+
+  /* ---------- Scavenger hunt ---------- */
+  .progress { height: 10px; border-radius: 99px; background: #e6d7b6; overflow: hidden; margin: 10px 0 18px; }
+  .progress i { display: block; height: 100%; background: linear-gradient(90deg, #c98a2c, var(--green)); transition: width .6s ease; }
+  .q { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 0 0 10px; }
+  .q.ok { border-color: #a9cdb6; background: #f4faf5; }
+  .q-head { display: flex; gap: 10px; align-items: flex-start; }
+  .q-num { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--gold-soft); color: var(--rust-dark); font-weight: 900; font-size: 14px; display: grid; place-items: center; }
+  .q.ok .q-num { background: var(--green); color: #fff; }
+  .q p { margin: 2px 0 8px; font-weight: 700; line-height: 1.4; }
+  .q .go { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 2px 9px; font-size: 13px; font-weight: 800; color: var(--rust-dark); white-space: nowrap; }
+  .q .go:hover:not(:disabled) { border-color: #c9b48a; }
+  .q .go:disabled { opacity: .5; cursor: default; }
+  .q .used { font-size: 12.5px; color: var(--muted); font-weight: 700; margin-left: auto; }
+  .q-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .q input {
+    flex: 1; min-width: 140px; font: inherit; font-size: 15.5px; padding: 7px 10px; border-radius: 8px; border: 1px solid #d6c5a3; background: #fff;
+  }
+  .q.ok input { border-color: #a9cdb6; color: var(--green); font-weight: 800; background: #fff; }
+  .btn {
+    border: 0; border-radius: 10px; padding: 8px 16px; font-weight: 800; background: var(--rust); color: #fff; font-size: 15px;
+    box-shadow: 0 2px 0 var(--rust-dark);
+  }
+  .btn:hover:not(:disabled) { background: var(--rust-dark); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn.ghost { background: #fff; color: var(--rust-dark); border: 1px solid var(--line); box-shadow: none; }
+  .btn.big { font-size: 17px; padding: 11px 22px; }
+  .verdict { font-size: 14px; font-weight: 700; margin: 6px 0 0; }
+  .verdict.no { color: var(--red); }
+  .verdict.yes { color: var(--green); }
+  .hint { font-size: 14px; color: var(--muted); margin: 6px 0 0; font-style: italic; }
+  .q-tools { display: flex; gap: 8px; margin-top: 6px; }
+  .q-tools button { border: 0; background: none; padding: 0; font-size: 13px; font-weight: 800; color: var(--muted); text-decoration: underline; }
+  .essay textarea {
+    width: 100%; min-height: 130px; font: 16px/1.45 "Nunito", sans-serif; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid #d6c5a3; background: #fff; resize: vertical;
+  }
+  .essay .meta { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .essay .meta .done { color: var(--green); font-weight: 800; }
+  .finish { text-align: center; background: var(--card); border: 1px dashed #c9b48a; border-radius: 14px; padding: 18px; margin-top: 18px; }
+  .finish p { margin: 0 0 12px; color: var(--muted); }
+  .section-h { font-family: var(--serif); font-weight: 400; font-size: 24px; margin: 26px 0 8px; }
+
+  /* ---------- Intro ---------- */
+  .overlay { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 18px; background: rgba(30,22,14,.55); backdrop-filter: blur(2px); overflow: auto; }
+  .intro {
+    width: min(620px, 100%); background: var(--paper-2); border-radius: 18px; padding: 30px 32px 26px; box-shadow: 0 20px 60px rgba(0,0,0,.4);
+    border: 1px solid #c9b48a; text-align: center;
+  }
+  .intro h1 { font-family: var(--serif); font-weight: 400; font-size: 38px; line-height: 1.1; margin: 4px 0 6px; }
+  .intro p { margin: 0 0 12px; }
+  .intro .steps { text-align: left; display: grid; gap: 8px; margin: 16px 0 18px; }
+  .intro .steps div { display: flex; gap: 10px; align-items: flex-start; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 15.5px; }
+  .intro .steps b.n { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; background: var(--rust); color: #fff; display: grid; place-items: center; font-size: 13px; }
+  .name-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .name-row input { font: inherit; font-size: 17px; padding: 9px 12px; border-radius: 10px; border: 1px solid #d6c5a3; width: min(280px, 100%); }
+  .resume { font-size: 14px; color: var(--muted); margin: 12px 0 0 !important; }
+  .resume button { border: 0; background: none; padding: 0; color: var(--rust-dark); font-weight: 800; text-decoration: underline; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 30px); opacity: 0; z-index: 60; pointer-events: none;
+    background: #2b2118; color: #fff; padding: 10px 18px; border-radius: 12px; font-weight: 700; font-size: 15px; transition: .3s; max-width: calc(100% - 32px); text-align: center;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .confetti { position: fixed; top: -12px; width: 9px; height: 14px; z-index: 60; pointer-events: none; animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(105vh) rotate(720deg); } }
+
+  /* site markers: places that matter but weren't states with borders */
+  .pin {
+    width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff; background: #6b3f1f; color: #fff; padding: 0;
+    display: grid; place-items: center; box-shadow: 0 1px 4px rgba(0,0,0,.45); cursor: pointer;
+  }
+  .pin:hover, .pin.on { background: var(--gold); transform: scale(1.15); }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 980px) {
+    body { overflow: auto; height: auto; }
+    .app { grid-template-columns: 1fr; grid-template-rows: auto; }
+    .app > .panel { grid-column: 1; grid-row: 2; }
+    .mapwrap { height: 58vh; min-height: 340px; position: sticky; top: 0; z-index: 2; border-bottom: 1px solid var(--line); }
+    .panel { border-left: 0; overflow: visible; }
+    .brand { font-size: 19px; }
+    .cartouche b { font-size: 24px; }
+    .cartouche small { font-size: 13px; }
+  }
+  @media (max-width: 600px) {
+    .topbar { padding: 8px 12px; gap: 10px; }
+    .topbar a.home span { display: none; }
+    .stat { padding: 2px 8px; }
+    .stat .long { display: none; }
+    .stat .short { display: inline; }
+    .save-btn span { display: none; }
+    .panel-inner { padding: 18px 16px 36px; }
+    .chips { grid-template-columns: 1fr; }
+    .timeline { left: 8px; right: 8px; bottom: 8px; padding: 8px 8px 6px; gap: 6px; }
+    .tl-step { width: 32px; height: 32px; }
+    .yr span { display: none; }
+    .yr.on span, .yr.end span { display: block; }
+    .cartouche { top: 8px; padding: 4px 12px 5px; max-width: calc(100% - 70px); left: 8px; transform: none; }
+    .zoom { top: 8px; right: 8px; }
+    .intro { padding: 22px 18px; }
+    .intro h1 { font-size: 30px; }
+  }
+</style>
+
+<header class="topbar">
+  <a class="home" href="index.html" title="Back to Mr. Dushin's Classroom">←<span> Classroom</span></a>
+  <div class="brand">Empires of the World, 1200–1750</div>
+  <div class="stats">
+    <div class="stat" id="stat-clues"><b id="clue-n">0/0</b><span class="long">Clues found</span><span class="short">Clues</span></div>
+    <button class="save-btn" id="save" title="Download your answers as a PDF">⬇<span> Save PDF</span></button>
+  </div>
+</header>
+
+<main class="app">
+  <section class="mapwrap" id="mapwrap" aria-label="Map of the world">
+    <div id="map"></div>
+    <div class="map-off">The map couldn't load on this device.<br>You can still use the list of states and finish the scavenger hunt.</div>
+    <div class="cartouche map-ui" id="cartouche"><b id="cart-y">1200</b><small id="cart-t"></small></div>
+    <div class="zoom map-ui">
+      <button id="zin" title="Zoom in" aria-label="Zoom in">+</button>
+      <button id="zout" title="Zoom out" aria-label="Zoom out">−</button>
+    </div>
+    <div class="timeline" id="timeline" role="group" aria-label="Timeline">
+      <button class="tl-step" id="prev" aria-label="Earlier year">◀</button>
+      <div class="track" id="track"><div class="rail"></div><div class="fill" id="tl-fill"></div></div>
+      <button class="tl-step" id="next" aria-label="Later year">▶</button>
+    </div>
+  </section>
+  <aside class="panel" id="panel">
+    <div class="ptabs" role="tablist">
+      <button class="ptab" role="tab" id="tab-atlas" aria-selected="true">Atlas</button>
+      <button class="ptab" role="tab" id="tab-hunt" aria-selected="false">Scavenger Hunt <span class="badge" id="hunt-badge">0/0</span></button>
+    </div>
+    <div class="panel-inner" id="pane"></div>
+  </aside>
+</main>
+
+<div class="overlay" id="intro">
+  <div class="intro" role="dialog" aria-labelledby="intro-h">
+    <p class="eyebrow">AP World History · Units 1–3</p>
+    <h1 id="intro-h">A World of Empires, 1200–1750</h1>
+    <p>Spin the globe and travel through 550 years of history. Watch empires rise and fall, then hunt for clues hidden in the atlas.</p>
+    <div class="steps">
+      <div><b class="n">1</b><span><b>Pick a year</b> on the timeline at the bottom of the map. The borders change to show who ruled where.</span></div>
+      <div><b class="n">2</b><span><b>Click a state</b> on the map (or in the list) to open its page in the atlas.</span></div>
+      <div><b class="n">3</b><span><b>Solve the scavenger hunt.</b> Every answer is somewhere in the atlas. When you finish, save your answers as a PDF and turn it in.</span></div>
+    </div>
+    <div class="name-row">
+      <input id="name-in" autocomplete="off" maxlength="40" placeholder="Your first and last name" aria-label="Your name">
+      <button class="btn big" id="start">Start exploring →</button>
+    </div>
+    <p class="resume" id="resume" hidden></p>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+// runs after the deferred map library has loaded
+addEventListener("DOMContentLoaded", () => {
+"use strict";
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let toastT = 0;
+function toast(msg, ms = 3500) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), ms); }
+
+/* ===================== The timeline ===================== */
+const YEARS = [1200, 1279, 1324, 1405, 1453, 1492, 1526, 1600, 1650, 1700, 1750];
+const HEAD = {
+  1200: ["On the eve of the Mongol conquests", "Song China is the richest state on Earth. The Abbasid caliphs still sit in Baghdad, but real power in the Islamic world has passed to Turkic and Kurdish sultans. On the steppe, a chief named Temujin is uniting the Mongol tribes."],
+  1279: ["The Mongols complete the conquest of China", "Kublai Khan's Yuan dynasty destroys the last Song resistance. The Mongol Empire has split into four khanates, but together they rule the largest land empire in history and keep the Silk Roads open."],
+  1324: ["Mansa Musa makes his hajj", "The ruler of Mali crosses the Sahara to Mecca with so much gold that its price falls in Cairo. Across Afro-Eurasia, Mongol rule, Indian Ocean trade, and the spread of Islam tie distant regions together."],
+  1405: ["Zheng He sets sail", "The Ming emperor sends Admiral Zheng He's treasure fleet into the Indian Ocean, visiting Malacca, Gujarat and the Swahili Coast. The Mongol khanates have mostly broken apart."],
+  1453: ["The Ottomans take Constantinople", "Sultan Mehmed II's cannons break the walls of Constantinople, ending the Byzantine Empire after more than a thousand years. In the Andes and in central Mexico, the Inca and Aztec empires are expanding fast."],
+  1492: ["Columbus reaches the Americas", "Ferdinand and Isabella conquer Granada, the last Muslim state in Spain, and pay for Columbus's voyage across the Atlantic. In West Africa, the Songhai Empire controls the trade cities of the Niger River."],
+  1526: ["Babur founds the Mughal Empire", "Babur wins the First Battle of Panipat with cannons and muskets. The same year, the Ottomans crush Hungary at Mohács. The Aztec Empire has already fallen to Spain; the Inca will fall within a decade."],
+  1600: ["The age of the gunpowder empires", "The Ottomans, Safavids and Mughals rule much of the Islamic world with armies built around guns. In Japan, the Battle of Sekigahara puts the Tokugawa family in power. Morocco has just destroyed Songhai."],
+  1650: ["The Qing rule China", "The Manchus have overthrown the Ming and founded the Qing dynasty. In Europe, the Peace of Westphalia (1648) ends the Thirty Years' War, and Dutch merchants dominate trade in the Indian Ocean."],
+  1700: ["The Mughal Empire at its height", "Under Aurangzeb the Mughals rule almost all of South Asia, but Maratha rebels are wearing the empire down. Russia, under Peter the Great, is turning toward Europe."],
+  1750: ["The end of the period", "The Mughal Empire is breaking apart, the Safavids are gone, and the Qing Empire is near its largest size. European empires now reach across every ocean."],
+};
+
+/* ===================== The states =====================
+   c: atlas colour (muted on the map like an old hand-tinted atlas); r: region.
+   Field notes double as scavenger-hunt clues, so keep the answers in the text. */
+const E = {
+  // ---- East Asia ----
+  song: { n: "Song Dynasty", r: "East Asia", c: "#c8473d", y: "960–1279", cap: "Hangzhou (in 1200), the largest city in the world, with over a million people", who: "Emperor Huizong (painter-emperor); Zhu Xi (Neo-Confucian thinker)", rel: "Neo-Confucianism, Buddhism, Daoism",
+    k: ["Ruled through a <b>bureaucracy</b> of scholar-officials chosen by <b>civil service exams</b> on Confucian texts.", "<b>Champa rice</b>, a fast-ripening rice from Vietnam, allowed two harvests a year, and China's population roughly doubled.", "A commercial economy: the <b>Grand Canal</b>, <b>paper money</b>, porcelain and silk for export, gunpowder, the magnetic compass, and movable-type printing.", "Elite women faced new limits under Neo-Confucianism, including the spread of <b>foot binding</b>."],
+    note: "Song China grew so much food thanks to Champa rice that its capital, Hangzhou, had more than a million people. The Mongols finally conquered the Song in 1279." },
+  yuan: { n: "Yuan Dynasty", r: "East Asia", c: "#4d7cb2", y: "1271–1368", cap: "Khanbaliq (Dadu), today's Beijing", who: "Kublai Khan, grandson of Chinggis Khan", rel: "Tibetan Buddhism at court; tolerance of Islam, Christianity, Daoism",
+    k: ["The Mongol khanate that ruled <b>China</b>. Kublai Khan finished the conquest of the Song in 1279.", "Mongols did not trust Chinese officials, so they ranked people by ethnicity and hired foreigners such as Persians, Central Asian Muslims and the Venetian merchant <b>Marco Polo</b>.", "The civil service exams were stopped for decades; paper money and the Grand Canal kept trade moving.", "Kublai's invasions of <b>Japan</b> (1274, 1281) and <b>Java</b> (1293) failed. Plague, floods and the Red Turban rebellion ended the dynasty in 1368."],
+    note: "Marco Polo said he served Kublai Khan for 17 years and was amazed that the Chinese used paper as money." },
+  ming: { n: "Ming Dynasty", r: "East Asia", c: "#d6b13c", y: "1368–1644", cap: "Nanjing, then Beijing (from 1421)", who: "Hongwu Emperor (founder, born a peasant); Yongle Emperor", rel: "Neo-Confucianism, Buddhism, Daoism",
+    k: ["Drove out the Mongols and brought back <b>Confucian civil service exams</b> and Chinese traditions.", "The Yongle Emperor moved the capital to Beijing and built the <b>Forbidden City</b>.", "Admiral <b>Zheng He</b> led seven huge treasure-fleet voyages (1405–1433) across the Indian Ocean, reaching East Africa, to show off Ming power and collect tribute.", "Rebuilt the <b>Great Wall</b> in brick and stone. Later the Ming demanded taxes in <b>silver</b>, much of it mined in Spanish America."],
+    note: "Zheng He's treasure fleet first sailed in 1405 with over 300 ships, some of them about four times longer than Columbus's Santa María." },
+  qing: { n: "Qing Dynasty", r: "East Asia", c: "#e2c768", y: "1644–1912", cap: "Beijing", who: "Kangxi Emperor; Qianlong Emperor", rel: "Confucianism, Tibetan Buddhism, Manchu shamanism",
+    k: ["Founded by the <b>Manchus</b> from northeast of the Great Wall, who took Beijing in 1644.", "A small Manchu minority ruled millions of Han Chinese: they kept the Confucian exams but paired Manchu and Han officials and forced Han men to wear the <b>queue</b> hairstyle as a sign of loyalty.", "Expanded into Taiwan, Mongolia, Tibet and Xinjiang (after destroying the Dzungars), making China the largest it has ever been.", "Emperors used <b>imperial portraits</b> and Buddhist and Confucian ceremonies to show they were rightful rulers to every people in the empire."],
+    note: "The Qing ordered every Han Chinese man to shave his forehead and wear a long braid called a queue, or face death." },
+  goryeo: { n: "Goryeo (Korea)", r: "East Asia", c: "#5ca3b6", y: "918–1392", cap: "Kaesong", who: "Kings of the Wang family", rel: "Buddhism, Confucianism",
+    k: ["Korea's name in English comes from <b>Goryeo</b>.", "Deeply shaped by China: Confucian exams, Chinese writing, and Buddhism.", "Famous for blue-green <b>celadon</b> pottery and for printing: the oldest surviving book printed with movable <b>metal</b> type, the Jikji (1377), is Korean.", "Became a junior partner of the Mongols after decades of resistance (1231–1270)."],
+    note: "While hiding from Mongol invaders, Goryeo monks carved the entire Buddhist scriptures onto more than 81,000 wooden blocks, the Tripitaka Koreana." },
+  joseon: { n: "Joseon (Korea)", r: "East Asia", c: "#5ca3b6", y: "1392–1897", cap: "Hanseong (Seoul)", who: "King Sejong the Great; Admiral Yi Sun-sin", rel: "Neo-Confucianism (official), Buddhism",
+    k: ["Made <b>Neo-Confucianism</b> the guide for government and family life; officials were chosen by exams.", "King Sejong introduced <b>Hangul</b>, a simple alphabet so ordinary people could read (1446).", "Fought off Japanese invasions (1592–1598) with Ming help and Admiral Yi's armored <b>turtle ships</b>.", "A tributary state of Ming and then Qing China."],
+    note: "King Sejong created the Korean alphabet, Hangul, saying a wise person could learn it in a morning." },
+  japan: { n: "Japan (shogunates)", r: "East Asia", c: "#c84d5c", y: "Kamakura 1185–1333 · Ashikaga 1336–1573", cap: "Kyoto (emperor); Kamakura (first shogun)", who: "The shogun (top general) and the daimyo (regional lords)", rel: "Zen and Pure Land Buddhism, Shinto",
+    k: ["The emperor reigned in Kyoto, but real power belonged to the <b>shogun</b>, a military ruler, and to regional lords called <b>daimyo</b> served by <b>samurai</b> warriors.", "Borrowed heavily from China (Buddhism, writing, Confucian ideas) while staying politically independent.", "Beat back two Mongol invasions in 1274 and 1281.", "From 1467 to about 1600, Japan fell apart into the <b>Sengoku</b> (\"Warring States\") period."],
+    note: "Typhoons wrecked Kublai Khan's invasion fleets twice. The Japanese called these storms kamikaze, the \"divine wind.\"" },
+  tokugawa: { n: "Tokugawa Shogunate", r: "East Asia", c: "#c84d5c", y: "1603–1868", cap: "Edo (Tokyo); the emperor stayed in Kyoto", who: "Tokugawa Ieyasu", rel: "Buddhism, Shinto, Neo-Confucianism; Christianity banned",
+    k: ["Tokugawa Ieyasu won the <b>Battle of Sekigahara</b> (1600) and became shogun in 1603, ending the Warring States era.", "<b>Alternate attendance</b>: daimyo had to live in Edo every other year and leave their families there as hostages, which kept them weak and loyal.", "Samurai became <b>salaried</b> officials paid in rice, not independent landlords.", "Banned Christianity and limited European trade to the <b>Dutch</b> at one small island in Nagasaki harbor, Dejima."],
+    note: "After 1639, the only Europeans allowed to trade in Japan were the Dutch, on the tiny artificial island of Dejima at Nagasaki." },
+  // ---- Southeast Asia ----
+  khmer: { n: "Khmer Empire", r: "Southeast Asia", c: "#3e8f6b", y: "802–1431", cap: "Angkor", who: "Suryavarman II (built Angkor Wat); Jayavarman VII", rel: "Hinduism, then Buddhism",
+    k: ["A <b>Hindu-Buddhist</b> state in mainland Southeast Asia, shaped by ideas from India.", "Built huge reservoirs and canals to irrigate rice fields that fed Angkor's large population.", "<b>Angkor Wat</b> was built for the Hindu god Vishnu and later became a Buddhist temple.", "Weakened by drought and wars; Ayutthaya sacked Angkor in 1431."],
+    note: "Angkor Wat is the largest religious monument in the world. It began as a Hindu temple and became Buddhist." },
+  srivijaya: { n: "Srivijaya Empire", r: "Southeast Asia", c: "#c27c3c", y: "c. 650–1275", cap: "Palembang (Sumatra)", who: "Its maharajas", rel: "Mahayana Buddhism",
+    k: ["A <b>sea-based</b> trading empire, not a land empire.", "Controlled the <b>Strait of Malacca</b>, the narrow passage between the Indian Ocean and the South China Sea, and taxed passing ships.", "A center of <b>Buddhist</b> learning visited by monks from China and India.", "Declined in the 1200s as rivals in Java grew stronger."],
+    note: "Srivijaya got rich by controlling the Strait of Malacca: almost every ship sailing between India and China had to pass through it." },
+  majapahit: { n: "Majapahit", r: "Southeast Asia", c: "#c4563c", y: "1293–c. 1527", cap: "Trowulan (Java)", who: "Raden Wijaya (founder); Gajah Mada (prime minister)", rel: "Hinduism and Buddhism",
+    k: ["A <b>Hindu-Buddhist</b> kingdom based on the island of Java.", "Its founder used a Mongol invasion of Java to defeat his rivals, then turned on the Mongols and drove them out (1293).", "Its prime minister Gajah Mada swore not to eat spiced food until he had united the islands of the archipelago.", "Grew rich on rice and the <b>spice trade</b>; declined as Muslim port cities like Malacca rose."],
+    note: "Majapahit was founded in 1293 by a prince who tricked Kublai Khan's invasion army into helping him, then chased it out of Java." },
+  sukhothai: { n: "Sukhothai Kingdom", r: "Southeast Asia", c: "#8f73c9", y: "1238–1438", cap: "Sukhothai", who: "King Ram Khamhaeng", rel: "Theravada Buddhism",
+    k: ["Often called the first <b>Thai</b> kingdom.", "Spread <b>Theravada Buddhism</b>, brought by monks from Sri Lanka.", "Later absorbed by its neighbor, Ayutthaya."],
+    note: "King Ram Khamhaeng is honored as the creator of the Thai alphabet; his stone inscription is dated 1292." },
+  malacca: { n: "Sultanate of Malacca", r: "Southeast Asia", c: "#7fb38e", y: "c. 1400–1511", cap: "Malacca", who: "Parameswara (founder)", rel: "Islam",
+    k: ["Founded by a prince who <b>converted to Islam</b>, which helped attract Muslim merchants from Gujarat and Arabia.", "Controlled the <b>Strait of Malacca</b>, like Srivijaya before it, and became the busiest port in Southeast Asia.", "Admiral Zheng He used Malacca as a base, and the sultan accepted Ming protection.", "Captured by the <b>Portuguese</b> in 1511."],
+    note: "A Portuguese writer said, \"Whoever is lord of Malacca has his hand on the throat of Venice.\"" },
+  // ---- Central Asia and the Mongols ----
+  mongol: { n: "Mongol tribes / Mongol Empire", r: "Central Asia", c: "#56709c", y: "1206–1368 (as an empire)", cap: "Karakorum (built from 1220)", who: "Temujin, who became Chinggis (Genghis) Khan", rel: "Tengri (sky god) and shamanism; tolerance of all faiths",
+    k: ["In 1200 the Mongols were feuding nomadic clans. Temujin united them by rewarding loyalty and skill instead of family ties.", "In 1206 a great assembly, the <b>kurultai</b>, named him <b>Chinggis Khan</b>.", "Mongol armies were organized in units of 10, 100, 1,000 and 10,000, and every warrior was a skilled horse archer.", "Within 70 years the Mongols built the largest land empire in history."],
+    note: "In 1206, an assembly called a kurultai gave Temujin the title Chinggis Khan, \"universal ruler.\"" },
+  goldenhorde: { n: "Golden Horde", r: "Central Asia", c: "#d6a23a", y: "c. 1242–1502", cap: "Sarai, on the Volga River", who: "Batu Khan (founder); Özbeg Khan", rel: "Islam (from the 1310s)",
+    k: ["The Mongol khanate of the western steppe, also called the <b>Kipchak Khanate</b>.", "Did not occupy the Russian cities; it made the Rus' princes pay <b>tribute</b>. The princes of Moscow grew powerful by collecting it.", "Converted to <b>Islam</b> under Özbeg Khan.", "Mongol trade routes helped carry the <b>Black Death</b> west in the 1340s."],
+    note: "In 1346 the Golden Horde besieged Caffa in Crimea. Ships fleeing that port helped bring the Black Death to Europe." },
+  chagatai: { n: "Chagatai Khanate", r: "Central Asia", c: "#b88a4b", y: "1225–1680s", cap: "Almaliq; nomadic court", who: "Chagatai, son of Chinggis Khan", rel: "Islam (from the 1300s)",
+    k: ["The Mongol khanate of <b>Central Asia</b>, the heart of the Silk Roads.", "Ruled trading cities like <b>Kashgar</b> and <b>Samarkand</b>.", "Split in the 1340s; in the west, the conqueror Timur rose to power from its ruins. The eastern part was called <b>Moghulistan</b>."],
+    note: "The Chagatai Khanate controlled Kashgar, an oasis city where the northern and southern Silk Roads met." },
+  ilkhanate: { n: "Il-khanate", r: "Middle East", c: "#7d5bae", y: "1256–1335", cap: "Maragheh, then Tabriz", who: "Hulagu (founder); Ghazan", rel: "Islam (from 1295); earlier Buddhism and Christianity at court",
+    k: ["The Mongol khanate of <b>Persia</b> and Iraq.", "Its founder <b>Hulagu</b>, a grandson of Chinggis Khan, sacked <b>Baghdad</b> in 1258 and killed the last Abbasid caliph.", "Stopped by the Mamluks at <b>Ain Jalut</b> (1260).", "The Ilkhans became Muslim and supported Persian scholars, like the astronomer <b>Nasir al-Din al-Tusi</b> at the Maragheh observatory."],
+    note: "Hulagu, grandson of Chinggis Khan, destroyed Baghdad in 1258. The astronomer al-Tusi then built an observatory for him at Maragheh." },
+  // ---- Middle East and North Africa ----
+  abbasid: { n: "Abbasid Caliphate", r: "Middle East", c: "#596a3f", y: "750–1258", cap: "Baghdad", who: "Caliph al-Nasir; Caliph al-Musta'sim (the last)", rel: "Sunni Islam",
+    k: ["Once ruled from Spain to Central Asia; Baghdad's <b>House of Wisdom</b> translated Greek, Persian and Indian works into Arabic.", "By 1200 the caliphate had <b>fragmented</b>. The caliph led the Sunni world in name, but Turkic sultans like the <b>Seljuks</b> held real power.", "Ended when the Mongols sacked Baghdad in 1258."],
+    note: "When the Mongols took Baghdad in 1258, they rolled the last caliph in a carpet and trampled him with horses, so no royal blood would touch the ground." },
+  mamluk: { n: "Mamluk Sultanate", r: "Middle East", c: "#c8a64e", y: "1250–1517", cap: "Cairo", who: "Sultan Baybars", rel: "Sunni Islam",
+    k: ["Ruled by <b>mamluks</b>: soldiers bought as enslaved boys from the steppe, converted to Islam and trained as elite cavalry, who seized power themselves.", "Defeated the Mongols at the <b>Battle of Ain Jalut</b> (1260) and drove the last Crusaders out of the Holy Land (1291).", "Cairo was the largest city in the Islamic world and controlled the Red Sea <b>spice trade</b>.", "Conquered by the Ottomans in 1517."],
+    note: "At Ain Jalut in 1260, the Mamluks became the first army to defeat the Mongols in a major battle." },
+  ottoman: { n: "Ottoman Empire", r: "Middle East", c: "#4f9a55", y: "1299–1922", cap: "Bursa, Edirne, then Istanbul (Constantinople) from 1453", who: "Mehmed II \"the Conqueror\"; Suleiman the Magnificent", rel: "Sunni Islam; Christians and Jews protected as millets",
+    k: ["Founded by <b>Osman</b>, the leader of a small Turkish state in Anatolia.", "<b>Mehmed II</b> conquered <b>Constantinople</b> in 1453 using giant cannons, and made it his capital.", "The <b>devshirme</b> took Christian boys from the Balkans, converted them to Islam, and trained them as <b>Janissaries</b> (elite gunpowder infantry) and officials loyal only to the sultan.", "Used <b>tax farming</b>. Conquered the Mamluks (1517), took Hungary at <b>Mohács</b> (1526) and besieged Vienna (1529). Rivals of the Shi'a Safavids."],
+    note: "Under the devshirme, the Ottomans took Christian boys, raised them as Muslims, and trained them to be Janissaries or even grand viziers." },
+  safavid: { n: "Safavid Empire", r: "Middle East", c: "#2f8f97", y: "1501–1736", cap: "Tabriz, Qazvin, then Isfahan", who: "Shah Ismail I (founder); Shah Abbas I", rel: "Twelver Shi'a Islam (state religion)",
+    k: ["Shah Ismail made <b>Shi'a Islam</b> the official religion of Persia, deepening the <b>Sunni–Shi'a split</b> with the Ottomans.", "Lost to Ottoman cannons at <b>Chaldiran</b> (1514), then built its own gunpowder army.", "Shah Abbas I made <b>Isfahan</b> a beautiful capital and sold silk and carpets to Europe.", "Fought the Mughals over the city of <b>Kandahar</b>, a long rivalry between the two empires."],
+    note: "The Safavids made Shi'a Islam the state religion of Iran. People said of their capital: \"Isfahan is half the world.\"" },
+  almohad: { n: "Almohad Caliphate", r: "North Africa", c: "#93a565", y: "1121–1269", cap: "Marrakesh", who: "Caliph Abu Yusuf Yaqub al-Mansur", rel: "Sunni Islam (strict Almohad reform)",
+    k: ["A Berber empire ruling <b>North Africa</b> and Muslim Spain (al-Andalus).", "Defeated by the Christian kings of Spain at <b>Las Navas de Tolosa</b> (1212), a turning point in the <b>Reconquista</b>.", "The philosopher <b>Ibn Rushd</b> (Averroes), whose writings on Aristotle shaped European thinkers, served the Almohads."],
+    note: "Ibn Rushd, known in Europe as Averroes, worked as a judge and doctor for the Almohad caliphs." },
+  // ---- South Asia ----
+  delhi: { n: "Delhi Sultanate", r: "South Asia", c: "#4c8d6c", y: "1206–1526", cap: "Delhi", who: "Razia Sultana; Alauddin Khalji; Muhammad bin Tughlaq; Ibrahim Lodi (last)", rel: "Islam (rulers); most subjects Hindu",
+    k: ["Turkic and Afghan <b>Muslim</b> rulers governing a mostly <b>Hindu</b> population; non-Muslims paid the <b>jizya</b> tax.", "Alauddin Khalji drove back several Mongol invasions.", "Muhammad bin Tughlaq tried to move the capital far to the south and to use copper coins as money; both failed.", "Timur sacked Delhi in 1398. The last sultan lost to <b>Babur</b> at <b>Panipat</b> (1526)."],
+    note: "Razia Sultana (ruled 1236–1240) was the only woman to rule the Delhi Sultanate. She dressed as a man and led armies on an elephant." },
+  gujarat: { n: "Gujarat Sultanate", r: "South Asia", c: "#7e9dd2", y: "1407–1573", cap: "Ahmedabad", who: "Sultan Ahmad Shah I", rel: "Islam; Hindu and Jain merchants",
+    k: ["A state that grew rich because of <b>Indian Ocean trade</b>.", "Its ports, like <b>Cambay</b> (Khambhat), shipped cotton textiles to East Africa, Arabia and Southeast Asia.", "Gujarati Muslim merchants helped spread <b>Islam</b> to Malacca and the islands of Southeast Asia."],
+    note: "Gujarat's port of Cambay sent cotton cloth all over the Indian Ocean, from the Swahili Coast to Malacca." },
+  vijayanagara: { n: "Vijayanagara Empire", r: "South Asia", c: "#b9464f", y: "1336–1646", cap: "Vijayanagara (Hampi)", who: "Harihara and Bukka (founders); Krishnadevaraya", rel: "Hinduism",
+    k: ["A powerful <b>Hindu</b> empire in southern India, founded by two brothers.", "Fought the Muslim sultanates of the Deccan to the north for centuries.", "Grew rich from trade in cotton, spices and warhorses imported by sea.", "Defeated at the Battle of Talikota (1565); its capital was looted and abandoned."],
+    note: "Foreign visitors said Vijayanagara's capital, Hampi, was as large as Rome, with markets selling diamonds and pearls." },
+  mughal: { n: "Mughal Empire", r: "South Asia", c: "#cf8a33", y: "1526–1857", cap: "Agra, Fatehpur Sikri, Delhi", who: "Babur (founder); Akbar; Shah Jahan; Aurangzeb", rel: "Islam (rulers); most subjects Hindu",
+    k: ["Founded by <b>Babur</b>, a descendant of both Timur and Chinggis Khan, who won the <b>First Battle of Panipat</b> (1526) with guns.", "<b>Akbar</b> (r. 1556–1605) ended the jizya tax on Hindus, married a Rajput princess and invited scholars of all religions to debate.", "<b>Zamindars</b> collected taxes from farmers for the emperor.", "Shah Jahan built the <b>Taj Mahal</b>, a mausoleum for his wife. <b>Aurangzeb</b> brought the empire to its largest size but brought back the jizya (1679), sparking revolts like the Marathas'."],
+    note: "Shah Jahan built the Taj Mahal as a tomb for his wife Mumtaz Mahal. It took about 20,000 workers some 20 years." },
+  // ---- Africa ----
+  mali: { n: "Mali Empire", r: "West Africa", c: "#e1b433", y: "c. 1235–1600", cap: "Niani", who: "Sundiata Keita (founder); Mansa Musa", rel: "Islam (rulers and cities); traditional religions",
+    k: ["Founded by <b>Sundiata Keita</b>, whose story is still told by griots in the Epic of Sundiata.", "Controlled the <b>trans-Saharan trade</b> in gold and salt, carried by camel <b>caravans</b>.", "<b>Mansa Musa</b> made the hajj to Mecca in 1324, giving away so much gold in Cairo that its value fell for years.", "<b>Timbuktu</b> became a center of Islamic learning with mosques and libraries. Ibn Battuta visited in 1352."],
+    note: "On his hajj in 1324, Mansa Musa spent so much gold in Cairo that its price there dropped for over a decade." },
+  songhai: { n: "Songhai Empire", r: "West Africa", c: "#c66a32", y: "c. 1464–1591", cap: "Gao", who: "Sunni Ali; Askia Muhammad (Askia the Great)", rel: "Islam (promoted by the rulers); traditional religions",
+    k: ["Sunni Ali conquered the Niger River trading cities of <b>Timbuktu</b> and Djenné.", "<b>Askia Muhammad</b> promoted Islam to unify his empire: he made the hajj, appointed Muslim judges and supported scholars.", "Biggest empire in West African history, rich from the gold trade.", "Destroyed by a <b>Moroccan</b> army with guns at <b>Tondibi</b> (1591)."],
+    note: "Askia Muhammad went on hajj in 1496 and came home with the title \"caliph of West Africa.\"" },
+  hausa: { n: "Hausa Kingdoms", r: "West Africa", c: "#6aa36d", y: "c. 1000–1808", cap: "Kano, Katsina, Zaria and other walled cities", who: "Queen Amina of Zazzau", rel: "Islam (from the 1300s) and traditional religions",
+    k: ["A group of independent <b>walled city-states</b> in today's northern Nigeria.", "Grew rich on trans-Saharan trade, cotton cloth, leather and <b>indigo</b> dye.", "Kano's dye pits, dug in 1498, are still in use today."],
+    note: "Queen Amina of Zazzau (Zaria) led armies and is said to have built earthen walls around her cities, still called \"Amina's walls.\"" },
+  ethiopia: { n: "Ethiopian Empire", r: "East Africa", c: "#d0703f", y: "Zagwe 900s–1270 · Solomonic 1270–1974", cap: "A moving royal camp; Gondar from 1636", who: "Emperor Lalibela; Emperor Zara Yaqob", rel: "Ethiopian Orthodox Christianity",
+    k: ["A <b>Christian</b> kingdom in the highlands, surrounded by Muslim states.", "The Solomonic emperors claimed descent from King Solomon and the Queen of Sheba.", "Fought the <b>Adal Sultanate</b>; with Portuguese help it survived an invasion in the 1530s–1540s."],
+    note: "King Lalibela's builders carved eleven churches straight down into solid rock around 1200." },
+  zimbabwe: { n: "Great Zimbabwe", r: "Southern Africa", c: "#8f6040", y: "c. 1100–1450", cap: "Great Zimbabwe", who: "Its Shona kings", rel: "Shona traditional religion",
+    k: ["A kingdom built by the <b>Shona</b> people.", "Grew rich from cattle and from sending <b>gold</b> and ivory to Swahili ports like Kilwa.", "Chinese porcelain and Persian pottery have been dug up at the site, proof of Indian Ocean trade."],
+    note: "Great Zimbabwe's stone walls, some 11 meters high, were built without any mortar holding the stones together." },
+  // ---- Europe ----
+  castile: { n: "Crown of Castile", r: "Europe", c: "#ddb93d", y: "1037–1479", cap: "Toledo, Valladolid", who: "Ferdinand III; Isabella I", rel: "Catholic Christianity",
+    k: ["The largest Christian kingdom in Spain and the leader of the <b>Reconquista</b> against Muslim states.", "Won a key victory at Las Navas de Tolosa (1212) and took Córdoba and Seville.", "Queen <b>Isabella</b> of Castile married Ferdinand of Aragon in 1469, uniting Spain."],
+    note: "Isabella of Castile married Ferdinand of Aragon in 1469; together they were called the \"Catholic Monarchs.\"" },
+  aragon: { n: "Crown of Aragon", r: "Europe", c: "#d28c3e", y: "1162–1716", cap: "Zaragoza, Barcelona", who: "James I \"the Conqueror\"; Ferdinand II", rel: "Catholic Christianity",
+    k: ["A union of Aragon, Catalonia and Valencia in eastern Spain.", "Built a <b>Mediterranean</b> trading empire: Majorca, Sicily, Sardinia and later Naples.", "Joined with Castile through the marriage of Ferdinand and Isabella."],
+    note: "Aragon's merchants in Barcelona ran one of the Mediterranean's busiest ports, trading with Italy and North Africa." },
+  granada: { n: "Emirate of Granada", r: "Europe", c: "#7cb55b", y: "1232–1492", cap: "Granada", who: "The Nasrid sultans; Muhammad XII (Boabdil, the last)", rel: "Islam",
+    k: ["The last <b>Muslim</b> state in Spain (al-Andalus).", "Survived by paying tribute to Castile.", "Surrendered to Ferdinand and Isabella on 2 January <b>1492</b>, ending the Reconquista."],
+    note: "Granada's rulers built the Alhambra, a red-walled palace famous for its gardens, fountains and carved ceilings." },
+  // ---- The Americas ----
+  cuzco: { n: "Kingdom of Cusco", r: "Americas", c: "#de9f35", y: "c. 1197–1438", cap: "Cusco", who: "Viracocha Inca", rel: "Worship of Inti (the sun) and the ancestors",
+    k: ["A small kingdom in the Andes mountains of Peru.", "In 1438 its prince <b>Pachacuti</b> defeated the rival Chanka people and turned Cusco into the <b>Inca Empire</b>."],
+    note: "Cusco means \"navel\" in Quechua: the Inca thought of their capital as the center of the world." },
+  inca: { n: "Inca Empire", r: "Americas", c: "#de9f35", y: "1438–1533", cap: "Cusco", who: "Pachacuti; Huayna Capac; Atahualpa", rel: "Worship of Inti, the sun god; the Sapa Inca was his son",
+    k: ["Called <b>Tawantinsuyu</b>, \"the four parts together,\" it stretched 4,000 km along the Andes.", "The <b>mit'a</b> system required people to work for the state on roads, farms and buildings instead of paying taxes in money.", "A road network of about 40,000 km with relay runners (chasquis); records kept on <b>quipu</b> knotted cords.", "The Sun Temple (Qorikancha) in Cusco was covered in gold. Francisco Pizarro captured the emperor Atahualpa in 1532."],
+    note: "The Inca had no written alphabet. They kept records of taxes and people with quipu, knotted strings of different colors." },
+  maya: { n: "Maya city-states", r: "Americas", c: "#5e905e", y: "c. 250 BCE–1697", cap: "No single capital; Mayapan led in 1200–1440", who: "The kings of the Cocom family at Mayapan", rel: "Maya religion: many gods, sacred calendar",
+    k: ["The Maya were never one empire but many competing <b>city-states</b>.", "Mayapan, in the Yucatán, led a league of cities from about 1220 to 1440.", "Used a written script, a 365-day calendar and the concept of zero.", "The last independent Maya city, Nojpetén, fell to Spain in 1697."],
+    note: "The Maya were one of the first peoples in the world to use a symbol for zero." },
+  aztec: { n: "Aztec Empire (Triple Alliance)", r: "Americas", c: "#3a9ea8", y: "1428–1521", cap: "Tenochtitlan", who: "Itzcoatl; Moctezuma II", rel: "Mexica religion, with human sacrifice to Huitzilopochtli",
+    k: ["An alliance of three cities, <b>Tenochtitlan</b>, Texcoco and Tlacopan, led by the Mexica.", "Ruled through a <b>tribute system</b>: conquered towns sent cloth, cacao, feathers and food, recorded on tribute lists.", "Practiced <b>human sacrifice</b> to keep the sun god strong, using captives from war.", "Tenochtitlan had about 200,000 people and fed them with <b>chinampas</b>. Hernán Cortés and Tlaxcalan allies conquered it in 1521, helped by smallpox."],
+    note: "The Aztecs fed their island capital with chinampas, \"floating gardens\" built from lake mud." },
+};
+// places that matter for the course but had no borders on the map
+const SITES = {
+  cahokia: { at: [-90.06, 38.66], years: [1200, 1279], n: "Cahokia", r: "Americas", y: "c. 1050–1350", cap: "Near today's St. Louis", rel: "Mississippian religion",
+    k: ["The largest city of the <b>Mississippian</b> culture in North America.", "At its peak around 1100, 10,000–20,000 people lived there, more than London at the time.", "Abandoned by about 1350."],
+    note: "Monks Mound at Cahokia is the largest earthen pyramid in North America, built by hand one basket of dirt at a time." },
+  mesaverde: { at: [-108.47, 37.18], years: [1200, 1279], n: "Mesa Verde", r: "Americas", y: "c. 600–1300", cap: "Southwestern Colorado", rel: "Ancestral Puebloan religion",
+    k: ["<b>Ancestral Puebloan</b> people built villages in the cliffs.", "Farmed maize, beans and squash on the mesa top.", "Abandoned around 1300, probably because of a long drought."],
+    note: "Cliff Palace at Mesa Verde had about 150 rooms tucked under a cliff overhang." },
+  kilwa: { at: [39.51, -8.96], years: [1200, 1279, 1324, 1405, 1453, 1492], n: "Kilwa and the Swahili Coast", r: "East Africa", y: "c. 1000–1505", cap: "Kilwa Kisiwani", rel: "Islam",
+    k: ["Independent Muslim <b>city-states of the Swahili Coast</b> like Kilwa, Mombasa and Mogadishu.", "<b>Swahili</b> is a Bantu language with many Arabic words, a sign of how African and Arab traders mixed.", "Kilwa sold gold from Great Zimbabwe to Arab, Persian and Indian merchants, riding the <b>monsoon</b> winds.", "Sacked by the Portuguese in 1505."],
+    note: "Ibn Battuta visited Kilwa in 1331 and called it one of the most beautiful cities in the world." },
+  samarkand: { at: [66.96, 39.65], years: [1279, 1324, 1405], n: "Samarkand", r: "Central Asia", y: "Founded c. 700 BCE", cap: "In today's Uzbekistan", rel: "Islam",
+    k: ["A powerful <b>Silk Road trading city</b>.", "Destroyed by Chinggis Khan in 1220, then rebuilt.", "Timur made it his capital and filled it with blue-domed mosques."],
+    note: "Samarkand was one of the first places outside China to make paper." },
+  kashgar: { at: [75.99, 39.47], years: [1279, 1324, 1405], n: "Kashgar", r: "Central Asia", y: "Ancient oasis city", cap: "In western China", rel: "Islam, earlier Buddhism",
+    k: ["A <b>Silk Road</b> city where routes around the Taklamakan Desert met.", "Caravans of <b>camels</b> rested and traded here before crossing the mountains."],
+    note: "Kashgar's Sunday market has been held for more than 2,000 years." },
+  tenochtitlan: { at: [-99.13, 19.43], years: [1405], n: "Mexica (Tenochtitlan)", r: "Americas", y: "Founded 1325", cap: "Tenochtitlan, on an island in Lake Texcoco", who: "Acamapichtli (first ruler)", rel: "Worship of Huitzilopochtli and many gods",
+    k: ["The <b>Mexica</b> founded Tenochtitlan in 1325 on an island in Lake Texcoco.", "In 1405 they were still <b>tributaries</b> of a stronger city, Azcapotzalco. In 1428 they formed the Triple Alliance, the Aztec Empire.", "Grew food on <b>chinampas</b>, farm plots built up from the lake bed."],
+    note: "Mexica legend says they built Tenochtitlan where they saw an eagle on a cactus eating a snake, the image on Mexico's flag today." },
+  chaco: { at: [-107.96, 36.06], years: [1200], n: "Chaco Canyon", r: "Americas", y: "c. 850–1150", cap: "Northwestern New Mexico", rel: "Ancestral Puebloan religion",
+    k: ["A center of the <b>Ancestral Puebloan</b> people, with huge multi-story stone buildings called great houses.", "Long, straight roads linked Chaco to dozens of outlying villages.", "By 1200 a long drought had emptied the great houses, and many people moved north toward Mesa Verde."],
+    note: "Pueblo Bonito, the largest great house at Chaco, had about 650 rooms and stood up to five stories tall." },
+  sinhala: { at: [80.7, 7.9], years: [1200, 1279, 1324, 1405], n: "Sinhala kingdoms (Sri Lanka)", r: "South Asia", y: "c. 400s BCE–1815", cap: "Polonnaruwa, later Dambadeniya and Kotte", who: "Parakramabahu I", rel: "Theravada Buddhism",
+    k: ["Kingdoms of the Sinhala people on the island of Sri Lanka.", "Centers of <b>Theravada Buddhism</b>; Sri Lankan monks spread it to Burma and Thailand.", "Built huge reservoirs (\"tanks\") to water rice fields, and traded in the Indian Ocean."],
+    note: "Sri Lanka's kings guarded a relic said to be the Buddha's tooth. Whoever held the Tooth Relic had the right to rule." },
+  europe: { at: [8.0, 49.0], years: [1200, 1279, 1324, 1405, 1453, 1492, 1526, 1600, 1650, 1700, 1750], n: "Europe", r: "Europe", y: "c. 1200–1750", cap: "Many kingdoms: France, England, the Holy Roman Empire and others", who: "Kings, nobles and the pope", rel: "Catholic Christianity; Protestant churches after 1517; Jewish communities",
+    k: ["Medieval Europe was <b>politically fragmented</b>: kings were weak and shared power with nobles and the Church.", "<b>Feudalism</b>: lords gave land to knights in return for military service. <b>Manorialism</b>: <b>serfs</b> farmed a lord's land and could not leave it.", "The Catholic Church was the most powerful institution in western Europe.", "In 1517 Martin Luther started the <b>Protestant Reformation</b>, splitting western Christianity. Later kings like Louis XIV claimed to rule by <b>divine right</b>."],
+    note: "A medieval serf could not leave the manor without the lord's permission, and owed the lord labor, crops and fees." },
+  timbuktu: { at: [-3.0, 16.77], years: [1324, 1405, 1453, 1492, 1526], n: "Timbuktu", r: "West Africa", y: "Founded c. 1100", cap: "On the Niger River, in today's Mali", rel: "Islam",
+    k: ["Where camel caravans from the Sahara met boats on the <b>Niger River</b>.", "A center of <b>Islamic scholarship</b> with mosques like Sankore and Djinguereber.", "Ruled by Mali, then by Songhai."],
+    note: "Families in Timbuktu still guard hundreds of thousands of old Arabic manuscripts on science, law and religion." },
+  kano: { at: [8.52, 12.0], years: [1324, 1405], n: "Kano (Hausa kingdoms)", r: "West Africa", y: "c. 1000–1808", cap: "Northern Nigeria", rel: "Islam and traditional religions",
+    k: ["Kano was the greatest of the <b>Hausa</b> city-states.", "Walled cities traded cloth, leather and indigo across the Sahara."],
+    note: "Kano's huge city walls were up to 15 meters high." },
+};
+const ALL = { ...E, ...Object.fromEntries(Object.entries(SITES).map(([k, v]) => [k, { ...v, site: true, c: "#6b3f1f" }])) };
+
+/* ===================== The scavenger hunt ===================== */
+// a: accepted answers (any of them may appear in what the student types); y: the year to visit; k: the atlas page with the answer;
+// h: the written hint shown with the first hint
+const HUNT = [
+  { y: 1200, q: "The richest state on Earth in 1200 had a capital with over a million people. Name the capital city.", k: "song", a: ["hangzhou", "lin'an", "linan"], h: "Find the biggest state in China in 1200." },
+  { y: 1200, q: "In 1206 a Mongol assembly gave Temujin a new title. What was it?", k: "mongol", a: ["chinggis", "genghis", "chingis", "jenghis"], h: "Click the Mongols north of China." },
+  { y: 1279, q: "Which grandson of Chinggis Khan sacked Baghdad in 1258 and founded the khanate that ruled Persia?", k: "ilkhanate", a: ["hulagu", "hulegu", "hülegü"], h: "Click the Mongol khanate in Persia (Iran)." },
+  { y: 1279, q: "Which state was the first to defeat the Mongols in a major battle, at Ain Jalut in 1260?", k: "mamluk", a: ["mamluk", "mameluke"], h: "Look in Egypt." },
+  { y: 1324, q: "Which ruler of Mali spent so much gold on his hajj in 1324 that its price fell in Cairo?", k: "mali", a: ["mansa musa", "musa"], h: "Click Mali in West Africa." },
+  { y: 1324, q: "Ibn Battuta called this Swahili Coast city-state one of the most beautiful in the world. Name it.", k: "kilwa", a: ["kilwa"], h: "Click the brown marker on the coast of East Africa." },
+  { y: 1324, q: "Who was the only woman ever to rule the Delhi Sultanate?", k: "delhi", a: ["razia", "raziya", "radiyya"], h: "Click the Delhi Sultanate in northern India." },
+  { y: 1405, q: "Which Ming admiral led treasure fleets into the Indian Ocean starting in 1405?", k: "ming", a: ["zheng he", "cheng ho"], h: "Click Ming China." },
+  { y: 1405, q: "The Khmer built the largest religious monument in the world. It began as a Hindu temple and became Buddhist. What is it called?", k: "khmer", a: ["angkor wat", "angkor"], h: "Click the Khmer Empire in mainland Southeast Asia." },
+  { y: 1453, q: "Which Ottoman sultan conquered Constantinople in 1453?", k: "ottoman", a: ["mehmed", "mehmet", "muhammad ii"], h: "Click the Ottoman Empire." },
+  { y: 1492, q: "The Inca had no alphabet. What knotted cords did they use to keep records?", k: "inca", a: ["quipu", "khipu", "quipus"], h: "Click the Inca Empire in South America." },
+  { y: 1492, q: "What were the Aztec \"floating gardens\" that fed Tenochtitlan called?", k: "aztec", a: ["chinampa"], h: "Click the Aztec Empire in Mexico." },
+  { y: 1492, q: "Which Songhai ruler promoted Islam, appointed Muslim judges and made the hajj in 1496?", k: "songhai", a: ["askia"], h: "Click the Songhai Empire in West Africa." },
+  { y: 1526, q: "Who founded the Mughal Empire after winning the First Battle of Panipat in 1526?", k: "mughal", a: ["babur", "babar"], h: "Click the new empire in northern India." },
+  { y: 1526, q: "What was the name of the capital of the Vijayanagara Empire, which foreign visitors compared to Rome?", k: "vijayanagara", a: ["hampi", "vijayanagar"], h: "Click the Hindu empire in southern India." },
+  { y: 1600, q: "What was the Ottoman system that took Christian boys and trained them as Janissaries and officials?", k: "ottoman", a: ["devshirme", "devsirme", "devşirme"], h: "Click the Ottoman Empire." },
+  { y: 1600, q: "Which branch of Islam did the Safavids make the state religion of Persia?", k: "safavid", a: ["shi'a", "shi a", "shia", "shiite", "shi'ite", "twelver"], h: "Click the empire in Persia (Iran)." },
+  { y: 1650, q: "Which people from northeast of the Great Wall founded the Qing dynasty?", k: "qing", a: ["manchu"], h: "Click China." },
+  { y: 1650, q: "Under Tokugawa rule, the only Europeans allowed to trade in Japan were kept on one tiny island. Which European people were they?", k: "tokugawa", a: ["dutch", "netherland", "holland"], h: "Click Japan." },
+  { y: 1700, q: "Which Mughal emperor brought the Mughal Empire to its largest size but brought back the jizya tax in 1679?", k: "mughal", a: ["aurangzeb", "aurangzib", "alamgir"], h: "Click the Mughal Empire." },
+];
+const ESSAYS = [
+  { id: "e1", q: "Pick one land-based empire from 1450–1750 (Ottoman, Safavid, Mughal, Ming/Qing, Songhai, or the Tokugawa). Use the timeline to describe how its borders changed between two years, and explain one method its rulers used to gain or keep power." },
+  { id: "e2", q: "Compare the world in 1279 with the world in 1700. Describe one important continuity (something that stayed the same) and one important change, using at least two states from the atlas as evidence." },
+];
+const ESSAY_MIN = 40;
+
+/* ===================== Saved progress ===================== */
+const KEY = "world-empires-quest";
+const blank = () => ({ name: "", answers: {}, essays: {} });
+let S = blank();
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.answers) S = Object.assign(blank(), s); } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+const solved = () => HUNT.filter((_, i) => S.answers[i] && S.answers[i].ok).length;
+const hintsUsed = () => HUNT.reduce((n, _, i) => n + ((S.answers[i] || {}).hints || 0), 0);
+const words = t => (t || "").trim().split(/\s+/).filter(Boolean).length;
+const norm = t => (t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z' ]+/g, " ").replace(/\s+/g, " ").trim();
+// letters to change, add or drop to turn one word into the other
+function edits(a, b) {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length];
+}
+// close spelling counts: one slip in a 5- or 6-letter answer, two in a longer one, anywhere in what the student typed (spaces ignored)
+function isRight(i, v) {
+  const words = norm(v).split(" ");
+  return HUNT[i].a.some(ans => {
+    const a = norm(ans), n = a.split(" ").length, slack = a.length < 5 ? 0 : a.length < 7 ? 1 : 2, squash = t => t.replace(/ /g, "");
+    if (squash(norm(v)).includes(squash(a))) return true;
+    for (let w = 0; w + n <= words.length; w++) for (let m = n; m <= n + 1 && w + m <= words.length; m++) if (edits(squash(words.slice(w, w + m).join(" ")), squash(a)) <= slack) return true;
+    return false;
+  });
+}
+function updateCounts(bump) {
+  const t = `${solved()}/${HUNT.length}`;
+  $("#clue-n").textContent = t; $("#hunt-badge").textContent = t;
+  if (bump) { const s = $("#stat-clues"); s.classList.remove("bump"); void s.offsetWidth; s.classList.add("bump"); }
+}
+
+/* ===================== Colours ===================== */
+// atlas colours, softened toward the paper like a hand-tinted old map
+const hex = h => [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16));
+const toHex = a => "#" + a.map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("");
+const PAPER = hex("#f1e8d2");
+const tint = c => toHex(hex(c).map((v, i) => v * 0.62 + PAPER[i] * 0.38));
+const shade = (c, k) => toHex(hex(c).map(v => v * k));
+
+/* ===================== Map ===================== */
+// Borders: OpenHistoricalMap where it has them for that year, historical-basemaps (A. Ourednik) to fill gaps;
+// land: OpenHistoricalMap tiles; coast, lakes and rivers: Natural Earth; relief: public elevation tiles.
+const CITIES = [
+  ["Hangzhou", 120.16, 30.27, 1200, 1279], ["Khanbaliq", 116.4, 39.9, 1279, 1368], ["Zhongdu", 116.35, 39.88, 1200, 1215], ["Beijing", 116.4, 39.9, 1405, 1750],
+  ["Nanjing", 118.8, 32.06, 1368, 1750], ["Karakorum", 102.83, 47.2, 1279, 1324], ["Kyoto", 135.77, 35.01, 1200, 1750], ["Edo", 139.69, 35.69, 1600, 1750],
+  ["Constantinople", 28.98, 41.01, 1200, 1750], ["Baghdad", 44.37, 33.31, 1200, 1750], ["Cairo", 31.24, 30.04, 1200, 1750], ["Mecca", 39.83, 21.42, 1200, 1750],
+  ["Delhi", 77.21, 28.61, 1200, 1750], ["Agra", 78.01, 27.18, 1526, 1750], ["Isfahan", 51.67, 32.65, 1600, 1750], ["Tabriz", 46.29, 38.08, 1279, 1526],
+  ["Sarai", 47.0, 47.5, 1279, 1405], ["Moscow", 37.62, 55.75, 1279, 1750], ["St. Petersburg", 30.32, 59.94, 1750, 1750], ["Venice", 12.33, 45.44, 1200, 1750],
+  ["Rome", 12.49, 41.9, 1200, 1750], ["Paris", 2.35, 48.86, 1200, 1750], ["London", -0.12, 51.51, 1200, 1750], ["Lisbon", -9.14, 38.72, 1200, 1750],
+  ["Granada", -3.6, 37.18, 1279, 1492], ["Amsterdam", 4.9, 52.37, 1600, 1750], ["Vienna", 16.37, 48.21, 1453, 1750], ["Gao", -0.04, 16.27, 1453, 1600],
+  ["Niani", -8.4, 11.38, 1279, 1453], ["Great Zimbabwe", 30.93, -20.27, 1279, 1405], ["Mbanza Kongo", 14.24, -6.27, 1453, 1750], ["Benin City", 5.63, 6.34, 1453, 1750],
+  ["Tenochtitlan", -99.13, 19.43, 1405, 1492], ["Mexico City", -99.13, 19.43, 1526, 1750], ["Cusco", -71.97, -13.53, 1200, 1750], ["Lima", -77.04, -12.05, 1600, 1750],
+  ["Malacca", 102.25, 2.19, 1405, 1750], ["Angkor", 103.87, 13.41, 1200, 1405], ["Hampi", 76.46, 15.33, 1405, 1526], ["Quebec", -71.21, 46.81, 1650, 1750],
+  ["Batavia", 106.82, -6.13, 1650, 1750], ["Goa", 73.83, 15.49, 1526, 1750], ["Potosí", -65.75, -19.59, 1600, 1750], ["Timbuktu", -3.0, 16.77, 1600, 1750],
+];
+const SEAS = [["Indian Ocean", 75, -15], ["Atlantic Ocean", -35, 25], ["Pacific Ocean", -150, 5], ["Pacific Ocean", 160, 20], ["Mediterranean Sea", 18, 35],
+              ["South China Sea", 114, 13], ["Arabian Sea", 64, 15], ["Bay of Bengal", 88, 15], ["Caribbean Sea", -75, 15], ["Sahara", 10, 23, "land"], ["Gobi", 105, 43, "land"]];
+const pt = (props, lon, lat) => ({ type: "Feature", properties: props, geometry: { type: "Point", coordinates: [lon, lat] } });
+const FC = features => ({ type: "FeatureCollection", features });
+const EMPTY = FC([]);
+const FADE = { duration: 900, delay: 0 };
+const SLOT_PAINT = { fill: ["fill-opacity", 0.82], edge: ["line-opacity", 0.85], lab: ["text-opacity", 1] };
+
+function makeStyle() {
+  const slot = X => ({ id: "fill-" + X, type: "fill", source: "s" + X, paint: {
+    "fill-color": ["get", "fc"], "fill-opacity": 0, "fill-opacity-transition": FADE } });
+  const edge = X => ({ id: "edge-" + X, type: "line", source: "s" + X, layout: { "line-join": "round" }, paint: {
+    "line-color": ["get", "bc"], "line-opacity": 0, "line-opacity-transition": FADE,
+    "line-width": ["interpolate", ["linear"], ["zoom"], 1, 0.6, 4, 1.4, 7, 2.4] } });
+  const lab = X => ({ id: "lab-" + X, type: "symbol", source: "l" + X, layout: {
+      "text-field": ["get", "n"], "text-font": ["OpenHistorical Bold"], "text-transform": "uppercase", "text-max-width": 7,
+      "text-letter-spacing": ["case", [">", ["get", "a"], 150], 0.2, 0.08], "symbol-sort-key": ["-", 0, ["get", "a"]], "text-padding": 2,
+      "text-size": ["interpolate", ["linear"], ["zoom"],
+        1.5, ["case", [">", ["get", "a"], 400], 11, [">", ["get", "a"], 120], 8.5, 0],
+        3, ["case", [">", ["get", "a"], 400], 15, [">", ["get", "a"], 60], 11.5, [">", ["get", "a"], 12], 9.5, 0],
+        5, ["case", [">", ["get", "a"], 400], 20, [">", ["get", "a"], 60], 15, [">", ["get", "a"], 4], 12, 10]] },
+    paint: { "text-color": ["get", "tc"], "text-opacity": 0, "text-opacity-transition": FADE, "text-halo-color": "rgba(246,238,215,0.8)", "text-halo-width": 1.4 } });
+  return {
+    version: 8,
+    projection: { type: "globe" },
+    glyphs: new URL("vendor/glyphs/", location.href).href + "{fontstack}/{range}.pbf",
+    sources: {
+      land: { type: "vector", tiles: ["https://vtiles.openhistoricalmap.org/maps/osm_land/{z}/{x}/{y}.pbf"], maxzoom: 14 },
+      dem: { type: "raster-dem", tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"], encoding: "terrarium",
+             tileSize: 256, maxzoom: 10, attribution: "Terrain: Mapzen" },
+      base: { type: "geojson", data: EMPTY, attribution: "Natural Earth" },
+      rivers: { type: "geojson", data: EMPTY },
+      sA: { type: "geojson", data: EMPTY, attribution: '<a href="https://www.openhistoricalmap.org/copyright" target="_blank">OpenHistoricalMap</a>, <a href="https://github.com/aourednik/historical-basemaps" target="_blank">historical-basemaps</a>' },
+      sB: { type: "geojson", data: EMPTY }, lA: { type: "geojson", data: EMPTY }, lB: { type: "geojson", data: EMPTY },
+      sel: { type: "geojson", data: EMPTY }, hov: { type: "geojson", data: EMPTY },
+      cities: { type: "geojson", data: EMPTY },
+      seas: { type: "geojson", data: FC(SEAS.map(([n, lo, la, k]) => pt({ n, k: k || "sea" }, lo, la))) },
+    },
+    layers: [
+      { id: "ocean", type: "background", paint: { "background-color": "#bfd3d1" } },
+      // a rough built-in outline, so there is always land on screen even if the tiles below are slow
+      { id: "base-land", type: "fill", source: "base", filter: ["==", ["get", "k"], "land"], paint: { "fill-color": "#f1e8d2" } },
+      { id: "land", type: "fill", source: "land", "source-layer": "land", paint: { "fill-color": "#f1e8d2" } },
+      slot("A"), slot("B"),
+      { id: "hover", type: "fill", source: "hov", paint: { "fill-color": "#fffbea", "fill-opacity": 0.28 } },
+      { id: "relief", type: "hillshade", source: "dem", paint: {
+          "hillshade-exaggeration": 0.5, "hillshade-shadow-color": "rgba(70,50,25,0.55)",
+          "hillshade-highlight-color": "rgba(255,250,235,0.45)", "hillshade-accent-color": "rgba(90,70,40,0.35)" } },
+      { id: "base-lakes", type: "fill", source: "base", filter: ["==", ["get", "k"], "lake"], paint: { "fill-color": "#bfd3d1" } },
+      // hide the sea-floor relief: paint everything below sea level as water
+      { id: "sea", type: "color-relief", source: "dem", paint: {
+          "color-relief-color": ["interpolate", ["linear"], ["elevation"], -10000, "#bfd3d1", -2, "#bfd3d1", 0, "rgba(191,211,209,0)"] } },
+      { id: "rivers", type: "line", source: "rivers", layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": "#7ea3ad", "line-width": ["interpolate", ["linear"], ["zoom"], 2, 0.5, 5, 1.2, 8, 2.4] } },
+      edge("A"), edge("B"),
+      // the clicked state lifts off the page: a soft shadow beneath it, then the state redrawn on top
+      // (no line offsets here: on jagged borders they shoot spikes out of every sharp corner)
+      { id: "sel-shadow-soft", type: "line", source: "sel", layout: { "line-join": "round", "line-cap": "round" }, paint: {
+          "line-color": "rgba(35,22,10,0.28)", "line-width": 5, "line-blur": 4, "line-translate": [3, 4] } },
+      { id: "sel-shadow", type: "fill", source: "sel", paint: { "fill-color": "rgba(35,22,10,0.3)", "fill-translate": [3, 4] } },
+      { id: "sel-fill", type: "fill", source: "sel", paint: { "fill-color": ["get", "fc"], "fill-opacity": 0.97, "fill-translate": [-1, -1] } },
+      { id: "sel-edge", type: "line", source: "sel", layout: { "line-join": "round", "line-cap": "round" }, paint: {
+          "line-color": ["get", "bc"], "line-width": ["interpolate", ["linear"], ["zoom"], 1, 1.2, 5, 2.2], "line-translate": [-1, -1] } },
+      { id: "sea-names", type: "symbol", source: "seas", layout: { "text-field": ["get", "n"], "text-font": ["OpenHistorical Italic"], "text-max-width": 6,
+          "text-size": ["interpolate", ["linear"], ["zoom"], 1, 11, 5, 17], "text-letter-spacing": 0.15 },
+        paint: { "text-color": ["match", ["get", "k"], "land", "#8a6d47", "#4f7a80"], "text-opacity": 0.85 } },
+      { id: "city-dots", type: "circle", source: "cities", minzoom: 2.6, paint: { "circle-radius": 2.6, "circle-color": "#fbf5e4", "circle-stroke-color": "#2a2118", "circle-stroke-width": 1.4 } },
+      { id: "city-names", type: "symbol", source: "cities", minzoom: 2.6, layout: { "text-field": ["get", "n"], "text-font": ["OpenHistorical Italic"], "text-size": 12,
+          "text-anchor": "left", "text-offset": [0.5, 0], "text-optional": true },
+        paint: { "text-color": "#2a2118", "text-halo-color": "rgba(246,238,215,0.9)", "text-halo-width": 1.3 } },
+      lab("A"), lab("B"),
+    ],
+  };
+}
+
+let map = null, styleOK = false, DATA = null, slotNow = "A", styleLoaded = null;
+let yearNow = null, selKey = null, hovKey = null;
+try {
+  map = new maplibregl.Map({
+    container: "map", style: makeStyle(), center: [55, 25], zoom: innerWidth < 600 ? 0.9 : 1.6,
+    minZoom: 0.6, maxZoom: 8, dragRotate: false, pitchWithRotate: false, attributionControl: false,
+  });
+  styleLoaded = new Promise(r => map.once("style.load", r));
+  map.touchZoomRotate.disableRotation();
+  map.keyboard.disableRotation();
+  map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-left");
+  // start with the credits folded into the (i) button: MapLibre opens them once by itself, so close them that first time
+  const credits = map.getContainer().querySelector(".maplibregl-ctrl-attrib");
+  const fold = obs => { if (credits.classList.contains("maplibregl-compact-show")) { credits.classList.remove("maplibregl-compact-show"); obs.disconnect(); } };
+  const watch = new MutationObserver((_, obs) => fold(obs));
+  watch.observe(credits, { attributes: true, attributeFilter: ["class"] });
+  fold(watch);
+} catch (e) {
+  map = null;
+  $("#mapwrap").classList.add("no-map");
+}
+const setup = (async () => {
+  DATA = await window.MAP_DATA;
+  if (!DATA) { $("#mapwrap").classList.add("no-map"); renderPane(); return; }
+  renderPane();
+  if (!map) return;
+  await styleLoaded;
+  map.getSource("base").setData(DATA.base);
+  map.getSource("rivers").setData(DATA.rivers);
+  styleOK = true;
+  const y = yearNow; yearNow = null; showYear(y, true);
+  wireMap();
+})();
+
+// the borders of one year, coloured and ready to draw
+function yearFeatures(y) {
+  const polys = [], labels = [];
+  (DATA.stops[y] || []).forEach((f, i) => {
+    const e = E[f.k], c = e ? e.c : "#b5a88a";
+    polys.push({ type: "Feature", id: i, properties: { k: f.k, fc: tint(c), bc: shade(c, 0.6) }, geometry: f.g });
+    labels.push({ type: "Feature", properties: { n: f.n, a: f.a, tc: shade(c, 0.42) }, geometry: { type: "Point", coordinates: f.l } });
+  });
+  return [FC(polys), FC(labels)];
+}
+function setSlot(X, on) { for (const [k, [p, v]] of Object.entries(SLOT_PAINT)) map.setPaintProperty(k + "-" + X, p, on ? v : 0); }
+const featsOf = (y, k) => DATA && DATA.stops[y] ? DATA.stops[y].filter(f => f.k === k) : [];
+function geomOf(y, k) {
+  const fs = featsOf(y, k); if (!fs.length) return null;
+  const e = E[k];
+  return FC(fs.map(f => ({ type: "Feature", properties: { fc: tint(e.c), bc: shade(e.c, 0.55) }, geometry: f.g })));
+}
+function bboxOf(fc) {
+  let b = [180, 90, -180, -90];
+  const walk = c => { if (typeof c[0] === "number") { b = [Math.min(b[0], c[0]), Math.min(b[1], c[1]), Math.max(b[2], c[0]), Math.max(b[3], c[1])]; } else c.forEach(walk); };
+  fc.features.forEach(f => walk(f.geometry.coordinates));
+  return [[b[0], b[1]], [b[2], b[3]]];
+}
+function drawSelection() {
+  if (!styleOK) return;
+  const g = selKey && !ALL[selKey].site ? geomOf(yearNow, selKey) : null;
+  map.getSource("sel").setData(g || EMPTY);
+  document.querySelectorAll(".pin").forEach(m => m.classList.toggle("on", m.dataset.k === selKey));
+}
+
+// drawn, not typed: the ★ character sits off-centre in most fonts
+const STAR = '<svg viewBox="0 0 24 24" width="60%" height="60%" aria-hidden="true"><path fill="currentColor" d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>';
+let siteMarkers = [];
+function drawSites() {
+  siteMarkers.forEach(m => m.remove()); siteMarkers = [];
+  if (!map) return;
+  for (const [k, s] of Object.entries(SITES)) {
+    if (!s.years.includes(yearNow)) continue;
+    const el = document.createElement("button");
+    el.className = "pin"; el.dataset.k = k; el.title = s.n; el.setAttribute("aria-label", s.n); el.innerHTML = STAR;
+    el.onclick = ev => { ev.stopPropagation(); fromHunt = false; select(k); };
+    siteMarkers.push(new maplibregl.Marker({ element: el }).setLngLat(s.at).addTo(map));
+  }
+}
+
+function showYear(y, instant) {
+  if (y === yearNow) return;
+  yearNow = y;
+  try { localStorage.setItem(KEY + "-year", y); } catch (e) {}
+  $("#cart-y").textContent = y; $("#cart-t").textContent = HEAD[y][0];
+  drawTimeline();
+  if (styleOK) {
+    const next = slotNow === "A" ? "B" : "A", [polys, labels] = yearFeatures(y);
+    map.getSource("s" + next).setData(polys);
+    map.getSource("l" + next).setData(labels);
+    map.getSource("cities").setData(FC(CITIES.filter(c => y >= c[3] && y <= c[4]).map(c => pt({ n: c[0] }, c[1], c[2]))));
+    map.getSource("hov").setData(EMPTY);
+    setSlot(next, true); setSlot(slotNow, false);
+    slotNow = next;
+    drawSites();
+  }
+  drawSelection();
+  renderPane();
+}
+
+function wireMap() {
+  const layer = () => "fill-" + slotNow;
+  const keyAt = e => { const f = map.queryRenderedFeatures(e.point, { layers: [layer()] })[0]; return f ? f.properties.k : null; };
+  map.on("mousemove", e => {
+    const k = keyAt(e);
+    map.getCanvas().style.cursor = k ? "pointer" : "";
+    if (k !== hovKey) { hovKey = k; map.getSource("hov").setData(k ? geomOf(yearNow, k) : EMPTY); }
+  });
+  map.on("mouseout", () => { hovKey = null; map.getSource("hov").setData(EMPTY); });
+  map.on("click", e => { const k = keyAt(e); fromHunt = false; if (k) select(k); else if (selKey) { selKey = null; drawSelection(); renderPane(); } });
+  drawSites();
+}
+$("#zin").onclick = () => map && map.zoomIn();
+$("#zout").onclick = () => map && map.zoomOut();
+
+function select(k, fly) {
+  selKey = k; tab = "atlas";
+  drawSelection(); renderPane();
+  if (fly && map) {
+    const s = ALL[k];
+    if (s.site) map.flyTo({ center: s.at, zoom: Math.max(map.getZoom(), 3.5), duration: reduceMotion ? 0 : 1400 });
+    else { const g = geomOf(yearNow, k); if (g) map.fitBounds(bboxOf(g), { padding: 60, maxZoom: 5, duration: reduceMotion ? 0 : 1400 }); }
+  }
+  // on phones the atlas sits under the map: bring the card into view
+  if (innerWidth <= 980) $("#panel").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" });
+}
+
+/* ===================== Timeline ===================== */
+const pos = y => (y - 1200) / 550 * 100;
+function buildTimeline() {
+  const tr = $("#track");
+  for (let y = 1200; y <= 1750; y += 50) { const t = document.createElement("i"); t.className = "tick"; t.style.left = pos(y) + "%"; tr.appendChild(t); }
+  YEARS.forEach((y, i) => {
+    const b = document.createElement("button");
+    b.className = "yr" + (i === 0 || i === YEARS.length - 1 ? " end" : ""); b.style.left = pos(y) + "%"; b.dataset.y = y;
+    b.innerHTML = `<i></i><span>${y}</span>`; b.setAttribute("aria-label", `${y}: ${HEAD[y][0]}`); b.title = `${y}: ${HEAD[y][0]}`;
+    b.onclick = ev => { ev.stopPropagation(); showYear(y); };
+    tr.appendChild(b);
+  });
+  // drag along the track: snap to the nearest year
+  const near = x => { const r = tr.getBoundingClientRect(), f = Math.max(0, Math.min(1, (x - r.left) / r.width)) * 550 + 1200;
+                      return YEARS.reduce((a, b) => Math.abs(b - f) < Math.abs(a - f) ? b : a); };
+  let drag = false;
+  tr.addEventListener("pointerdown", e => { if (e.target.closest(".yr")) return; drag = true; tr.setPointerCapture(e.pointerId); showYear(near(e.clientX)); });
+  tr.addEventListener("pointermove", e => { if (drag) showYear(near(e.clientX)); });
+  tr.addEventListener("pointerup", () => drag = false);
+  $("#prev").onclick = () => step(-1);
+  $("#next").onclick = () => step(1);
+}
+const step = d => { const i = YEARS.indexOf(yearNow) + d; if (i >= 0 && i < YEARS.length) showYear(YEARS[i]); };
+function drawTimeline() {
+  document.querySelectorAll(".yr").forEach(b => { const y = +b.dataset.y; b.classList.toggle("on", y === yearNow); b.classList.toggle("past", y < yearNow); });
+  $("#tl-fill").style.width = pos(yearNow) + "%";
+  $("#prev").disabled = yearNow === YEARS[0]; $("#next").disabled = yearNow === YEARS[YEARS.length - 1];
+}
+addEventListener("keydown", e => {
+  if (e.target.closest("input, textarea") || !$("#intro").hidden) return;
+  if (e.key === "ArrowLeft") step(-1);
+  if (e.key === "ArrowRight") step(1);
+});
+
+/* ===================== Side panel ===================== */
+let tab = "atlas", fromHunt = false;   // fromHunt: the open atlas page came from a hint
+$("#tab-atlas").onclick = () => { tab = "atlas"; fromHunt = false; renderPane(); };
+$("#tab-hunt").onclick = () => { tab = "hunt"; renderPane(); };
+const REGIONS = ["East Asia", "Southeast Asia", "Central Asia", "South Asia", "Middle East", "North Africa", "West Africa", "East Africa", "Central Africa", "Southern Africa", "Europe", "Americas"];
+const yearsOf = k => ALL[k].site ? ALL[k].years : YEARS.filter(y => featsOf(y, k).length);
+
+function renderPane() {
+  $("#tab-atlas").setAttribute("aria-selected", tab === "atlas");
+  $("#tab-hunt").setAttribute("aria-selected", tab === "hunt");
+  const p = $("#pane");
+  if (tab === "hunt") renderHunt(p);
+  else if (selKey) renderCard(p, selKey);
+  else renderYear(p);
+  updateCounts();
+}
+
+function renderYear(p) {
+  const y = yearNow, [title, blurb] = HEAD[y];
+  const keys = [...new Set((DATA && DATA.stops[y] || []).map(f => f.k))].filter(k => E[k]);
+  const sites = Object.keys(SITES).filter(k => SITES[k].years.includes(y));
+  const groups = REGIONS.map(r => [r, [...keys.filter(k => E[k].r === r), ...sites.filter(k => SITES[k].r === r)]]).filter(g => g[1].length);
+  p.innerHTML = `
+    <p class="eyebrow">The world in ${y}</p>
+    <h2 class="pt">${esc(title)}</h2>
+    <p class="lede">${esc(blurb)}</p>
+    <div class="how"><b>How to explore:</b> change the year on the timeline, then click any colored state (or a ★ marker) to open its page. Answers to the <button class="back" style="margin:0" id="go-hunt">scavenger hunt</button> are hidden in these pages.</div>
+    <p class="list-h">On the map in ${y}</p>
+    ${DATA ? `<div class="chips">${groups.map(([r, ks]) => `<p class="region-h">${r}</p>` + ks.map(k => {
+      const e = ALL[k]; return `<button class="chip${e.site ? " site" : ""}" data-k="${k}"><i style="background:${e.site ? e.c : tint(e.c)};box-shadow:inset 0 0 0 2px ${shade(e.c, .6)}"></i>${esc(labelFor(k, y))}</button>`;
+    }).join("")).join("")}</div>` : `<p class="lede">Loading the map…</p>`}`;
+  $("#go-hunt").onclick = () => { tab = "hunt"; renderPane(); };
+  p.querySelectorAll(".chip").forEach(b => b.onclick = () => { fromHunt = false; select(b.dataset.k, true); });
+}
+// the name a state went by in a given year (Muscovy, Yuan Dynasty...)
+const labelFor = (k, y) => { const f = featsOf(y, k)[0]; return ALL[k].site || !f ? ALL[k].n : f.n; };
+
+function renderCard(p, k) {
+  const e = ALL[k], ys = yearsOf(k), here = ys.includes(yearNow);
+  const initial = e.n.replace(/^(The|Kingdom of|Crown of|State of the|Republic of|Viceroyalty of|Sultanate of|Khanate of|Emirate of)\s+/, "")[0];
+  p.innerHTML = `
+    <button class="back" id="back">${fromHunt ? "← Back to the scavenger hunt" : `← All states in ${yearNow}`}</button>
+    <div class="card-top">
+      <div class="seal" style="background:${e.site ? "#d9c29a" : tint(e.c)}">${e.site ? STAR : esc(initial)}</div>
+      <div><p class="eyebrow">${esc(e.r)}${e.site ? " · city or site" : ""}</p><h2 class="pt">${esc(e.n)}</h2><p class="dates">${esc(e.y)}</p></div>
+    </div>
+    ${here ? "" : `<p class="off-map" style="margin-top:14px">Not on the map in ${yearNow}. Jump to a year below to see it.</p>`}
+    <dl class="facts">
+      <dt>${e.site ? "Where" : "Capital"}</dt><dd>${esc(e.cap)}</dd>
+      ${e.who ? `<dt>Key rulers</dt><dd>${esc(e.who)}</dd>` : ""}
+      <dt>Religion</dt><dd>${esc(e.rel)}</dd>
+    </dl>
+    <p class="list-h" style="margin-top:0">What to know</p>
+    <ul class="know">${e.k.map(x => `<li>${x}</li>`).join("")}</ul>
+    <div class="note">${esc(e.note)}</div>
+    <p class="list-h">On the map in</p>
+    <div class="years-on">${ys.map(y => `<button data-y="${y}" class="${y === yearNow ? "on" : ""}">${y}</button>`).join("")}</div>`;
+  $("#back").onclick = () => { if (fromHunt) tab = "hunt"; fromHunt = false; selKey = null; drawSelection(); renderPane(); };
+  p.querySelectorAll(".years-on button").forEach(b => b.onclick = () => showYear(+b.dataset.y));
+  $("#panel").scrollTop = 0;
+}
+
+function renderHunt(p) {
+  const n = solved();
+  p.innerHTML = `
+    <p class="eyebrow">Scavenger hunt</p>
+    <h2 class="pt">Find the clues</h2>
+    <p class="lede">Every answer is in the atlas: pick the right year, click the right state, and read its page. Close spelling counts. Stuck? A hint takes you to the year; a second hint opens the right page. Your teacher will see how many hints you used.</p>
+    <div class="progress"><i style="width:${n / HUNT.length * 100}%"></i></div>
+    ${HUNT.map((h, i) => {
+      const a = S.answers[i] || {};
+      return `<div class="q${a.ok ? " ok" : ""}" data-i="${i}">
+        <div class="q-head"><span class="q-num">${a.ok ? "✓" : i + 1}</span><div style="flex:1">
+          <p>${esc(h.q)}</p>
+          <div class="q-row"><input value="${esc(a.v || "")}" ${a.ok ? "readonly" : ""} aria-label="Answer to clue ${i + 1}" placeholder="Your answer">
+            ${a.ok ? "" : `<button class="btn" data-check>Check</button>`}${a.ok ? "" : `<button class="go" ${(a.hints || 0) >= 2 ? "disabled" : ""}>${!a.hints ? "Hint" : a.hints === 1 ? "Hint 2" : "No hints left"}</button>`}${a.hints ? `<span class="used">${a.hints} hint${a.hints > 1 ? "s" : ""} used</span>` : ""}</div>
+          ${a.ok ? `<p class="verdict yes">Clue found!</p>` : a.tries ? `<p class="verdict no">Not quite. Look again in ${h.y}.</p>` : ""}
+          ${!a.ok && a.hints ? `<p class="hint">Hint: go to ${h.y}. ${esc(h.h)}</p>` : ""}
+        </div></div></div>`;
+    }).join("")}
+    <h3 class="section-h">Your field report</h3>
+    <p class="lede" style="margin-top:0">Answer both in at least ${ESSAY_MIN} words. Use the map as evidence.</p>
+    ${ESSAYS.map(es => `<div class="q essay"><p>${esc(es.q)}</p><textarea data-e="${es.id}" placeholder="Write at least ${ESSAY_MIN} words…">${esc(S.essays[es.id] || "")}</textarea>
+      <div class="meta"><span data-c="${es.id}"></span><span>Saved on this device</span></div></div>`).join("")}
+    <div class="finish">
+      <p>${n === HUNT.length ? "You found every clue! Finish your field report, then save your PDF and turn it in." : `You've found ${n} of ${HUNT.length} clues. You can save your work at any time.`}</p>
+      <button class="btn big" id="dl">⬇ Download my answers (PDF)</button>
+    </div>`;
+  p.querySelectorAll(".q[data-i]").forEach(box => {
+    const i = +box.dataset.i, inp = box.querySelector("input"), chk = box.querySelector("[data-check]");
+    const check = () => {
+      const v = inp.value.trim(); if (!v) { inp.focus(); return; }
+      const a = S.answers[i] = S.answers[i] || { tries: 0 };
+      a.v = v; a.tries++;
+      if (isRight(i, v)) { a.ok = true; save(); updateCounts(true); if (solved() === HUNT.length) confetti(); else toast("Clue found!"); }
+      else save();
+      renderPane();
+      const again = $(`.q[data-i="${i}"] input`); if (again && !a.ok) again.focus();
+    };
+    if (chk) chk.onclick = check;
+    inp.onkeydown = e => { if (e.key === "Enter" && chk) check(); };
+    // first hint: jump to the year; second hint: open the atlas page that holds the answer
+    const hint = box.querySelector(".go");
+    if (hint) hint.onclick = () => {
+      const a = S.answers[i] = S.answers[i] || { tries: 0 };
+      a.hints = Math.min(2, (a.hints || 0) + 1); save();
+      showYear(HUNT[i].y);
+      if (a.hints === 2) { fromHunt = true; select(HUNT[i].k, true); return; }
+      renderPane();
+      if (innerWidth <= 980) $("#mapwrap").scrollIntoView({ behavior: "smooth" });
+    };
+  });
+  p.querySelectorAll("textarea[data-e]").forEach(t => {
+    const c = p.querySelector(`[data-c="${t.dataset.e}"]`);
+    const upd = () => { const w = words(t.value); c.textContent = w >= ESSAY_MIN ? `✓ ${w} words` : `${w} / ${ESSAY_MIN} words`; c.className = w >= ESSAY_MIN ? "done" : ""; };
+    t.oninput = () => { S.essays[t.dataset.e] = t.value; save(); upd(); };
+    upd();
+  });
+  $("#dl").onclick = () => downloadAnswers($("#dl"));
+}
+$("#save").onclick = () => downloadAnswers($("#save"), $("#save").innerHTML);
+
+function confetti() {
+  if (reduceMotion) return toast("You found every clue!");
+  const colors = ["#c8473d", "#d6b13c", "#4f9a55", "#4d7cb2", "#cf8a33", "#7d5bae"];
+  for (let i = 0; i < 90; i++) {
+    const c = document.createElement("i"); c.className = "confetti";
+    c.style.left = Math.random() * 100 + "vw"; c.style.background = colors[i % colors.length];
+    c.style.animationDuration = 2.4 + Math.random() * 2.2 + "s"; c.style.animationDelay = Math.random() * .8 + "s";
+    document.body.appendChild(c); setTimeout(() => c.remove(), 6000);
+  }
+  toast("You found every clue! Now finish your field report.", 5000);
+}
+
+/* ===================== Turning it in ===================== */
+let pdfLib = null;
+const loadPdfLib = () => pdfLib || (pdfLib = new Promise((res, rej) => {
+  const sc = document.createElement("script");
+  sc.src = "vendor/jspdf/jspdf.umd.min.js";
+  sc.onload = () => res(window.jspdf.jsPDF);
+  sc.onerror = () => { pdfLib = null; rej(new Error("PDF library didn't load")); };
+  document.head.appendChild(sc);
+}));
+// the PDF's built-in fonts only cover Western European letters; drop anything else
+const WIN_ANSI = "€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ";
+const pdfText = t => String(t).replace(/[^\n\x20-\x7e\xa0-\xff]/g, c => WIN_ANSI.includes(c) ? c : "");
+async function downloadAnswers(btn, label) {
+  btn.disabled = true; if (!label) btn.textContent = "Making your PDF…";
+  try {
+    const JsPDF = await loadPdfLib();
+    const doc = new JsPDF({ unit: "pt", format: "letter" });
+    const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 54;
+    let y = M;
+    const need = h => { if (y + h > H - M) { doc.addPage(); y = M; } };
+    const write = (text, { font = "helvetica", style = "normal", size = 11, color = [43, 33, 24], gap = 4 } = {}) => {
+      doc.setFont(font, style); doc.setFontSize(size); doc.setTextColor(...color);
+      for (const line of doc.splitTextToSize(pdfText(text), W - 2 * M)) { need(size * 1.35); doc.text(line, M, y + size); y += size * 1.35; }
+      y += gap;
+    };
+    write("Empires of the World, 1200-1750", { font: "times", style: "bold", size: 24, gap: 2 });
+    write("AP World History web quest: scavenger hunt and field report", { font: "times", style: "italic", size: 13, color: [111, 96, 78], gap: 10 });
+    write(`${S.name || "Student"}  ·  ${solved()} of ${HUNT.length} clues found  ·  ${hintsUsed()} hints used  ·  ${new Date().toLocaleDateString()}`, { style: "bold", gap: 14 });
+    HUNT.forEach((h, i) => {
+      const a = S.answers[i] || {};
+      need(50);
+      write(`${i + 1}. (${h.y}) ${h.q}`, { style: "bold", size: 10.5, gap: 2 });
+      write(`${a.v || "(no answer)"}   ${a.ok ? "[correct]" : a.v ? "[not yet correct]" : ""}${a.hints ? `   (${a.hints} hint${a.hints > 1 ? "s" : ""})` : ""}`, { font: "times", style: "italic", size: 12, color: a.ok ? [46, 107, 79] : [29, 45, 107], gap: 8 });
+    });
+    need(60); doc.setDrawColor(227, 213, 185); doc.line(M, y, W - M, y); y += 14;
+    write("Field report", { font: "times", style: "bold", size: 17, gap: 6 });
+    ESSAYS.forEach((es, i) => {
+      write(`${i + 1}. ${es.q}`, { style: "bold", size: 10.5, gap: 3 });
+      write(S.essays[es.id] || "(no answer)", { font: "times", style: "italic", size: 12, color: [29, 45, 107], gap: 12 });
+    });
+    const pages = doc.getNumberOfPages();
+    for (let k = 1; k <= pages; k++) {
+      doc.setPage(k); doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(140, 125, 105);
+      doc.text(pdfText(`${S.name || "Student"} · Empires of the World web quest · page ${k} of ${pages}`), W / 2, H - 28, { align: "center" });
+    }
+    doc.save(`${(S.name || "").replace(/[^\p{L}\p{N}\- ]+/gu, "").trim() || "Student"} - Empires web quest.pdf`);
+    toast("Saved! Turn in the PDF file to your teacher.");
+  } catch (e) {
+    saveText();
+    toast("The PDF wasn't available, so your answers saved as a text file. Turn that in instead.", 5000);
+  }
+  btn.disabled = false; if (label) btn.innerHTML = label; else btn.textContent = "⬇ Download my answers (PDF)";
+}
+function saveText() {
+  const out = ["Empires of the World, 1200-1750: web quest", `${S.name || "Student"} · ${solved()} of ${HUNT.length} clues · ${hintsUsed()} hints used · ${new Date().toLocaleDateString()}`, ""];
+  HUNT.forEach((h, i) => { const a = S.answers[i] || {}; out.push(`${i + 1}. (${h.y}) ${h.q}`, `   ${a.v || "(no answer)"}${a.ok ? " [correct]" : ""}${a.hints ? ` (${a.hints} hint${a.hints > 1 ? "s" : ""})` : ""}`, ""); });
+  out.push("FIELD REPORT", "");
+  ESSAYS.forEach((es, i) => out.push(`${i + 1}. ${es.q}`, S.essays[es.id] || "(no answer)", ""));
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([out.join("\n")], { type: "text/plain" }));
+  a.download = `${(S.name || "Student").replace(/[^\p{L}\p{N}\- ]+/gu, "").trim() || "Student"} - Empires web quest.txt`;
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* ===================== Start ===================== */
+buildTimeline();
+let startYear = 1200;
+try { const y = +localStorage.getItem(KEY + "-year"); if (YEARS.includes(y)) startYear = y; } catch (e) {}
+showYear(startYear);
+const nameIn = $("#name-in");
+if (S.name) {
+  nameIn.value = S.name;
+  const r = $("#resume"); r.hidden = false;
+  r.innerHTML = `Welcome back, ${esc(S.name)}! Your answers are saved. <button id="fresh">Start over instead</button>`;
+  $("#fresh").onclick = () => { if (confirm("Erase your saved answers and start over?")) { S = blank(); save(); nameIn.value = ""; r.hidden = true; renderPane(); } };
+}
+const begin = () => {
+  const n = nameIn.value.trim();
+  if (!n) { nameIn.focus(); nameIn.style.borderColor = "#b8442f"; nameIn.placeholder = "Type your name first!"; return; }
+  S.name = n; save();
+  $("#intro").hidden = true;
+};
+$("#start").onclick = begin;
+nameIn.onkeydown = e => { if (e.key === "Enter") begin(); };
+});
+</script>

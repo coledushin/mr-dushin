@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none" stroke="#000" stroke-width="13" stroke-linecap="round" stroke-linejoin="round">
+  <!-- a half globe with a flag planted on top: sea, one island and a winding coast -->
+  <path d="M26 222A102 102 0 0 1 230 222Z" fill="#a9cdd2" stroke="none"/>
+  <path d="M84 222V214Q84 204 96 204H120Q132 204 134 192Q136 180 148 180H168Q180 180 180 170Q180 158 170 158Q160 158 160 148Q160 138 172 138H186A102 102 0 0 1 230 222Z" fill="#e3c37a" stroke="none"/>
+  <path d="M84 222V214Q84 204 96 204H120Q132 204 134 192Q136 180 148 180H168Q180 180 180 170Q180 158 170 158Q160 158 160 148Q160 138 172 138H186"/>
+  <rect x="58" y="160" width="52" height="26" rx="13" fill="#e3c37a"/>
+  <path d="M26 222A102 102 0 0 1 230 222Z"/>
+  <path d="M128 120V30"/>
+  <path d="M128 34H188L170 56L188 78H128Z" fill="#cd6a6a"/>
+</svg>
