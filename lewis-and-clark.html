@@ -146,7 +146,9 @@
   }
   .far .stop:not(.viewing) .lbl { display: none; }
   @keyframes ripple { 0% { transform: scale(.7); opacity: .9; } 100% { transform: scale(2); opacity: 0; } }
-  .lc { font: 800 12px/1 "Nunito", sans-serif; color: #fff; background: var(--red); border-radius: 6px; padding: 3px 5px; box-shadow: 0 1px 3px rgba(40,25,10,.3); pointer-events: none; }
+  .lc { font: 800 12px/1 "Nunito", sans-serif; color: #fff; background: var(--red); border-radius: 6px; padding: 3px 5px; box-shadow: 0 1px 3px rgba(40,25,10,.3); pointer-events: none; animation: lc-pop .45s ease-out; }
+  /* "scale", not "transform": the map moves the chip with its own transform */
+  @keyframes lc-pop { 0% { scale: 0; } 65% { scale: 1.3; } 100% { scale: 1; } }
 
   .pin { pointer-events: none; filter: drop-shadow(0 1px 1.5px rgba(40,25,10,.35)); }
   .pin svg { display: block; overflow: visible; }
@@ -1241,21 +1243,25 @@ function drawTrail(d) {
 }
 // stage 0: nothing; 1: home as far as the Blackfeet fight; 2: all the way home
 function drawReturn(stage, f = 1) {
-  if (stage === 0) { ["main", "lewis", "clark", "home"].forEach(k => setLine("ret-" + k, [])); return; }
+  if (stage === 0) { ["main", "lewis", "clark", "home"].forEach(k => setLine("ret-" + k, [])); return showChips({ lewis: 0, clark: 0 }); }
   if (stage === 1) {
-    const d = LEG1.len * f;
+    const d = LEG1.len * f, split = Math.max(0, d - RET.main.len);
+    const drawn = { lewis: split, clark: RET.clark.len * split / (LEG1.len - RET.main.len) };
     setLine("ret-main", upTo(RET.main, d));
-    setLine("ret-lewis", d > RET.main.len ? upTo(RET.lewis, d - RET.main.len) : []);
-    setLine("ret-clark", d > RET.main.len ? upTo(RET.clark, RET.clark.len * (d - RET.main.len) / (LEG1.len - RET.main.len)) : []);
+    setLine("ret-lewis", split ? upTo(RET.lewis, drawn.lewis) : []);
+    setLine("ret-clark", split ? upTo(RET.clark, drawn.clark) : []);
     setLine("ret-home", []);
+    showChips(drawn);
   } else {
     const d = LEG2.len * f, rest = RET.lewis.len - FIGHT;
     drawReturn(1);
     setLine("ret-lewis", upTo(RET.lewis, FIGHT + Math.min(d, rest)));
     setLine("ret-home", d > rest ? upTo(RET.home, d - rest) : []);
+    showChips({ lewis: FIGHT + Math.min(d, rest), clark: RET.clark.len });
   }
-  lcChips.forEach(m => m.getElement().hidden = false);
 }
+// each L or C chip pops up once its captain's line has been drawn as far as the chip
+const showChips = drawn => lcChips.forEach(c => { c.el.hidden = drawn[c.k] < c.d; });
 
 /* markers: the stops students have reached, and the compass pin */
 const markers = {};
@@ -1270,7 +1276,8 @@ STOPS.forEach((st, i) => {
 });
 const lcChips = [["lewis", "L", .25], ["lewis", "L", .55], ["clark", "C", .3], ["clark", "C", .7]].map(([k, t, f]) => {
   const e = document.createElement("span"); e.className = "lc"; e.textContent = t; e.hidden = true;
-  return marker(e, {}, at(RET[k], RET[k].len * f).pt);
+  marker(e, {}, at(RET[k], RET[k].len * f).pt);
+  return { k, d: RET[k].len * f, el: e };
 });
 const pinEl = document.createElement("div");
 pinEl.className = "pin";
