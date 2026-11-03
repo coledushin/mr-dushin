@@ -267,7 +267,15 @@
     body { overflow: auto; height: auto; }
     .app { grid-template-columns: 1fr; grid-template-rows: auto; }
     .app > .panel { grid-column: 1; grid-row: 2; }
-    .mapwrap { height: 58vh; min-height: 340px; position: sticky; top: 0; z-index: 2; border-bottom: 1px solid var(--line); }
+    /* the map stays pinned on top while the atlas scrolls under it */
+    :root { --maph: max(52vh, 300px); }
+    @supports (height: 1svh) { :root { --maph: max(52svh, 300px); } }
+    .mapwrap { height: var(--maph); min-height: 0; position: sticky; top: 0; z-index: 2; border-bottom: 1px solid var(--line); }
+    .ptabs { top: var(--maph); }
+    .panel { scroll-margin-top: var(--maph); }
+    /* while typing an answer, let the map scroll away so the keyboard doesn't leave the box hidden */
+    body.typing .mapwrap { position: relative; }
+    body.typing .ptabs { top: 0; }
     .panel { border-left: 0; overflow: visible; }
     .brand { font-size: 19px; }
     .cartouche b { font-size: 24px; }
@@ -333,7 +341,7 @@
     <p>Spin the globe and travel through 550 years of history. Watch empires rise and fall, then hunt for clues hidden in the atlas.</p>
     <div class="steps">
       <div><b class="n">1</b><span><b>Pick a year</b> on the timeline at the bottom of the map. The borders change to show who ruled where.</span></div>
-      <div><b class="n">2</b><span><b>Click a state</b> on the map (or in the list) to open its page in the atlas.</span></div>
+      <div><b class="n">2</b><span><b>Tap or click a state</b> on the map (or in the list) to open its page in the atlas.</span></div>
       <div><b class="n">3</b><span><b>Solve the scavenger hunt.</b> Every answer is somewhere in the atlas. When you finish, save your answers as a PDF and turn it in.</span></div>
     </div>
     <div class="name-row">
@@ -868,6 +876,10 @@ $("#tab-atlas").onclick = () => { tab = "atlas"; fromHunt = false; renderPane();
 $("#tab-hunt").onclick = () => { tab = "hunt"; renderPane(); };
 const REGIONS = ["East Asia", "Southeast Asia", "Central Asia", "South Asia", "Middle East", "North Africa", "West Africa", "East Africa", "Central Africa", "Southern Africa", "Europe", "Americas"];
 const yearsOf = k => ALL[k].site ? ALL[k].years : YEARS.filter(y => featsOf(y, k).length);
+
+// phones: let the pinned map scroll away while a student types an answer
+document.addEventListener("focusin", e => document.body.classList.toggle("typing", !!e.target.closest(".panel input, .panel textarea")));
+document.addEventListener("focusout", () => document.body.classList.remove("typing"));
 
 function renderPane() {
   $("#tab-atlas").setAttribute("aria-selected", tab === "atlas");
